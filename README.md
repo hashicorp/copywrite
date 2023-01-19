@@ -33,6 +33,7 @@ Common Commands:
 Additional Commands:
   completion  Generate the autocompletion script for the specified shell
   debug       Prints env-specific debug information about copywrite
+  dispatch    Dispatches audit jobs for a list of repos
   help        Help about any command
   report      Performs a variety of reporting tasks
 
