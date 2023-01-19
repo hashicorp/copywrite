@@ -1,0 +1,11 @@
+.vscode
+.DS_Store
+
+# output from running the program
+repos.csv
+
+# Ignore built binaries
+copywrite
+
+# Ignore local configs
+.env

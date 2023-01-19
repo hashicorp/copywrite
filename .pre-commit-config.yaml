@@ -1,0 +1,30 @@
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v2.3.0
+    hooks:
+      - id: end-of-file-fixer
+        exclude: ^addLicense/testdata/
+      - id: trailing-whitespace
+        exclude: ^addLicense/testdata/
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.0
+    hooks:
+      - id: go-fmt
+      - id: go-vet
+        exclude: ^addLicense/testdata/
+      - id: go-imports
+      - id: go-cyclo
+        args: [-over=20]
+      - id: validate-toml
+      - id: no-go-testing
+      - id: golangci-lint
+      # Disabling until gocritic fixes the "Unexpected package creation during export data loading"
+      # error that shows up when using packages containing generics
+      # - id: go-critic
+      - id: go-unit-tests
+      - id: go-build
+      - id: go-mod-tidy

@@ -1,0 +1,31 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    main: main.go
+    ldflags:
+      - -s -w -X github.com/hashicorp/copyright-notice-automation/cmd.version={{.Version}} -X github.com/hashicorp/copyright-notice-automation/cmd.commit={{.ShortCommit}}
+    binary: copywrite
+archives:
+  - replacements:
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
+checksum:
+  name_template: 'SHA256SUMS'
+release:
+  github:
+    owner: hashicorp
+    name: copyright-notice-automation
+  header: |
+    - Attached to this release are compressed builds of the `copywrite` client
