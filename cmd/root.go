@@ -4,8 +4,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/hashicorp/copyright-notice-automation/config"
-	"github.com/hashicorp/copyright-notice-automation/github/actions"
+	"github.com/hashicorp/copywrite/config"
+	"github.com/hashicorp/copywrite/github/actions"
 	"github.com/hashicorp/go-hclog"
 	"github.com/spf13/cobra"
 )

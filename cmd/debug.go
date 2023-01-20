@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hashicorp/copyright-notice-automation/github"
+	"github.com/hashicorp/copywrite/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/mergestat/timediff"

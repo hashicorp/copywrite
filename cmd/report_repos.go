@@ -3,7 +3,7 @@ package cmd
 import (
 	"os"
 
-	"github.com/hashicorp/copyright-notice-automation/repodata"
+	"github.com/hashicorp/copywrite/repodata"
 	"github.com/spf13/cobra"
 )
 

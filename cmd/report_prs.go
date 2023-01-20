@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/google/go-github/v45/github"
-	gh "github.com/hashicorp/copyright-notice-automation/github"
+	gh "github.com/hashicorp/copywrite/github"
 	"github.com/mergestat/timediff"
 
 	"github.com/jedib0t/go-pretty/v6/table"

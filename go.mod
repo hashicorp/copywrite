@@ -1,4 +1,4 @@
-module github.com/hashicorp/copyright-notice-automation
+module github.com/hashicorp/copywrite
 
 go 1.18
 

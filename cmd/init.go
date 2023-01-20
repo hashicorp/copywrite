@@ -12,8 +12,8 @@ import (
 	"time"
 
 	addlicense "github.com/hashicorp/addLicense"
-	"github.com/hashicorp/copyright-notice-automation/config"
-	"github.com/hashicorp/copyright-notice-automation/github"
+	"github.com/hashicorp/copywrite/config"
+	"github.com/hashicorp/copywrite/github"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/mattn/go-isatty"
 	"github.com/samber/lo"

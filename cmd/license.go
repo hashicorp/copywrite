@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/hashicorp/copyright-notice-automation/github"
-	"github.com/hashicorp/copyright-notice-automation/licensecheck"
+	"github.com/hashicorp/copywrite/github"
+	"github.com/hashicorp/copywrite/licensecheck"
 	"github.com/spf13/cobra"
 )
 

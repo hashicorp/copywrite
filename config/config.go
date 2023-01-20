@@ -41,7 +41,7 @@ type Dispatch struct {
 
 	// A list of repos that should be exempted from scans.
 	// Repo names must be fully-qualified (i.e., include the org name), like so:
-	// "hashicorp/copyright-notice-automation"
+	// "hashicorp/copywrite"
 	IgnoredRepos []string `koanf:"ignored_repos"`
 
 	// Sleep time in seconds between polling operations

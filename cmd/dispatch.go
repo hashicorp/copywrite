@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/google/go-github/v45/github"
-	"github.com/hashicorp/copyright-notice-automation/dispatch"
-	gh "github.com/hashicorp/copyright-notice-automation/github"
-	"github.com/hashicorp/copyright-notice-automation/repodata"
+	"github.com/hashicorp/copywrite/dispatch"
+	gh "github.com/hashicorp/copywrite/github"
+	"github.com/hashicorp/copywrite/repodata"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"

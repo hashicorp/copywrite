@@ -13,7 +13,7 @@ builds:
       - arm64
     main: main.go
     ldflags:
-      - -s -w -X github.com/hashicorp/copyright-notice-automation/cmd.version={{.Version}} -X github.com/hashicorp/copyright-notice-automation/cmd.commit={{.ShortCommit}}
+      - -s -w -X github.com/hashicorp/copywrite/cmd.version={{.Version}} -X github.com/hashicorp/copywrite/cmd.commit={{.ShortCommit}}
     binary: copywrite
 archives:
   - replacements:
@@ -26,6 +26,6 @@ checksum:
 release:
   github:
     owner: hashicorp
-    name: copyright-notice-automation
+    name: copywrite
   header: |
     - Attached to this release are compressed builds of the `copywrite` client

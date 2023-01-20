@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/hashicorp/copyright-notice-automation/cmd"
+	"github.com/hashicorp/copywrite/cmd"
 	"github.com/hashicorp/go-hclog"
 )
 
