@@ -16,7 +16,7 @@ require (
 	github.com/spf13/afero v1.9.3
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/thanhpk/randstr v1.0.4
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
 )
