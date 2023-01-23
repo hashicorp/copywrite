@@ -7,7 +7,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
 	github.com/hashicorp/addLicense v1.2.1
 	github.com/hashicorp/go-hclog v1.4.0
-	github.com/jedib0t/go-pretty/v6 v6.3.9
+	github.com/jedib0t/go-pretty/v6 v6.4.4
 	github.com/knadh/koanf v1.4.3
 	github.com/mattn/go-isatty v0.0.16
 	github.com/mergestat/timediff v0.0.3
