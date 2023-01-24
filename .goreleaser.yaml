@@ -29,3 +29,18 @@ release:
     name: copywrite
   header: |
     - Attached to this release are compressed builds of the `copywrite` client
+
+# Auto-publish to the HashiCorp homebrew tap: https://github.com/hashicorp/homebrew-tap
+brews:
+  - name: copywrite
+    tap:
+      owner: hashicorp
+      name: homebrew-tap
+      branch: copywrite
+      token: '{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}'
+    homepage: 'https://github.com/hashicorp/copywrite'
+    description: 'copywrite -- utilities for managing copyright headers and license files for GitHub repos'
+    license: 'MPL-2.0'
+    folder: Formula
+    test: |
+      system "#{bin}/copywrite --version"
