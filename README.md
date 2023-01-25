@@ -1,14 +1,21 @@
 # copywrite
 
 This repo provides utilities for managing copyright headers and license files
-in HashiCorp repos.
+across many repos at scale.
 
 You can use it to add or validate copyright headers on source code files, add a
 LICENSE file to a repo, report on what licenses repos are using, and more.
 
 ## Getting Started
 
-Copywrite is installable on Windows, Linux, and MacOS from the [releases](https://github.com/hashicorp/copywrite/releases) page.
+The easiest way to get started is to use Homebrew:
+
+```sh
+brew tap hashicorp/tap
+brew install hashicorp/tap/copywrite
+```
+
+Installers for Windows, Linux, and MacOS are also available on the [releases](https://github.com/hashicorp/copywrite/releases) page.
 
 ## CLI Usage
 
@@ -134,11 +141,11 @@ freely in later steps.
   - name: Setup Copywrite
     uses: hashicorp/setup-copywrite@main
 
-  ...
-
   - name: Check Header Compliance
     run: copywrite headers --plan
 ```
+
+:bulb: Running the copywrite command with the `--plan` flag will return a non-zero exit code if the repo is out of compliance.
 
 ## Development
 
