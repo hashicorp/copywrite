@@ -71,16 +71,19 @@ for any unknown values. If you are running this command in CI, please use the
 		// Try to autodiscover license and year
 		if repo, err := github.DiscoverRepo(); err == nil {
 			client := github.NewGHClient().Raw()
-			data, _, _ := client.Repositories.Get(context.Background(), repo.Owner, repo.Name)
+			data, _, err := client.Repositories.Get(context.Background(), repo.Owner, repo.Name)
+			if err == nil {
+				cobra.CheckErr(err)
+				// fall back to GitHub repo creation year if --year wasn't set
+				if !cmd.Flags().Changed("year") {
+					newConfig.Project.CopyrightYear = data.CreatedAt.Year()
+				}
 
-			// fall back to GitHub repo creation year if --year wasn't set
-			if !cmd.Flags().Changed("year") {
-				newConfig.Project.CopyrightYear = data.CreatedAt.Year()
-			}
-
-			// fall back to GitHub's reported SPDX identifier if --spdx wasn't set
-			if !cmd.Flags().Changed("spdx") {
-				newConfig.Project.License = *data.GetLicense().SPDXID
+				// fall back to GitHub's reported SPDX identifier if --spdx wasn't set
+				if !cmd.Flags().Changed("spdx") {
+					license := data.GetLicense()
+					newConfig.Project.License = license.GetSPDXID()
+				}
 			}
 		}
 
