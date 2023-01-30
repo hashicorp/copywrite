@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
-	github.com/hashicorp/addLicense v1.2.1
+	github.com/hashicorp/addLicense v1.3.0
 	github.com/hashicorp/go-hclog v1.4.0
 	github.com/jedib0t/go-pretty/v6 v6.4.4
 	github.com/knadh/koanf v1.5.0
@@ -23,7 +23,7 @@ require (
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
-	github.com/bmatcuk/doublestar/v4 v4.2.0 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/cli/safeexec v1.0.0 // indirect
 	github.com/cli/shurcooL-graphql v0.0.2 // indirect
 	github.com/fatih/color v1.13.0 // indirect
@@ -54,7 +54,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/net v0.0.0-20220923203811-8be639271d50 // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
