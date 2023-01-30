@@ -133,13 +133,13 @@ that file is meant to be specific to each project and checked in to its repo.
 ## GitHub Action
 
 To make it easier to use `copywrite` in your own CI jobs (e.g., to add a PR check),
-you can make use of the `hashicorp/setup-copywrite` GitHub Action. It
+you can make use of the [hashicorp/setup-copywrite](https://github.com/marketplace/actions/setup-copywrite) GitHub Action. It
 automatically installs the binary and adds it to your `$PATH` so you can call it
 freely in later steps.
 
 ```yaml
   - name: Setup Copywrite
-    uses: hashicorp/setup-copywrite@main
+    uses: uses: hashicorp/setup-copywrite@3ace06ad72e6ec679ea8572457b17dbc3960b8ce # v1.0.0
 
   - name: Check Header Compliance
     run: copywrite headers --plan
