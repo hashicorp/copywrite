@@ -156,10 +156,10 @@ case for adding missing copyright headers can be done by adding the following
 snippet to your repo's `.pre-commit-config.yaml`:
 
 ```yaml
--   repo: https://github.com/hashicorp/copywrite
-    rev: v0.15.0  # Use any release tag
+  - repo: https://github.com/hashicorp/copywrite
+    rev: v0.15.0 # Use any release tag
     hooks:
-    -   id: copywrite-headers
+      - id: copywrite-headers
 ```
 
 ## Development
