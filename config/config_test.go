@@ -240,8 +240,9 @@ func Test_LoadConfigFile(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 78,
 				Dispatch: Dispatch{
-					BatchID: "aZ0-9",
-					Branch:  "main",
+					BatchID:          "aZ0-9",
+					Branch:           "main",
+					GitHubOrgToAudit: "hashicorp-forge",
 					IgnoredRepos: []string{
 						"org/repo1",
 						"org/repo2",
@@ -308,6 +309,7 @@ func Test_Sprint(t *testing.T) {
 			expectedOutput: strings.Join([]string{
 				"dispatch.batch_id -> aZ0-9",
 				"dispatch.branch -> main",
+				"dispatch.github_org_to_audit -> hashicorp-forge",
 				"dispatch.ignored_repos -> [org/repo1 org/repo2]",
 				"dispatch.max_attempts -> 3",
 				"dispatch.sleep -> 42",

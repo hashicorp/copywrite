@@ -10,8 +10,9 @@ import (
 
 // Flag variables
 var (
-	fields    string
-	fieldsArr []string
+	fields           string
+	fieldsArr        []string
+	githubOrgToAudit string
 )
 
 // reportReposCmd represents the report command

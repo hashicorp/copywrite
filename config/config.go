@@ -39,6 +39,9 @@ type Dispatch struct {
 	// The GitHub Branch to base workflow runs off of
 	Branch string `koanf:"branch"`
 
+	// The GitHub Organization who's repositories you want to audit
+	GitHubOrgToAudit string `koanf:"github_org_to_audit"`
+
 	// A list of repos that should be exempted from scans.
 	// Repo names must be fully-qualified (i.e., include the org name), like so:
 	// "hashicorp/copywrite"
