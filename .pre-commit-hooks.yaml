@@ -1,0 +1,27 @@
+- id: add-headers
+  name: Add copyright headers
+  description: Adds missing copyright headers to all source code files
+  entry: go run .
+  language: golang
+  args: [headers]
+
+- id: check-headers
+  name: Validate copyright headers
+  description: Checks if any copyright headers are missing, but does not make changes
+  entry: go run .
+  language: golang
+  args: [headers --plan]
+
+- id: add-license
+  name: Add or fix repo license
+  description: Adds or updates a non-compliant LICENSE file
+  entry: go run .
+  language: golang
+  args: [license]
+
+- id: check-license
+  name: Validate repo license
+  description: Checks if a LICENSE file is valid, but does not make changes
+  entry: go run .
+  language: golang
+  args: [license --plan]

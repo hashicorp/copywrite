@@ -147,6 +147,21 @@ freely in later steps.
 
 :bulb: Running the copywrite command with the `--plan` flag will return a non-zero exit code if the repo is out of compliance.
 
+## Pre-Commit Hooks
+
+Copywrite can be used as a [Pre-Commit](https://pre-commit.com) Hook for those
+looking to add copyright headers during local development. A list of supported
+hooks can be found in [here](./.pre-commit-hooks.yaml), but the most common use
+case for adding missing copyright headers can be done by adding the following
+snippet to your repo's `.pre-commit-config.yaml`:
+
+```yaml
+  - repo: https://github.com/hashicorp/copywrite
+    rev: v0.15.0 # Use any release tag
+    hooks:
+      - id: copywrite-headers
+```
+
 ## Debugging
 
 Copywrite supports several built-in features to aid with debugging. The first
@@ -171,13 +186,10 @@ itself in. The `copywrite debug` command can print the running configuration,
 whether or not a config file was loaded, what GitHub auth type is in use, and
 more. No sensitive information is printed, however.  
 
+
 ## Development
 
-### IDE Settings
-
 To maintain a consistent developer experience, this repo comes bundled with VS Code settings. When opening the repo for the first time, you will be asked if you want to install [suggested extensions](./.vscode/extensions.json) and your workspace will be pre-configured with consistent format-on-save [settings](./.vscode/settings.json).
-
-### Pre-Commit Hooks
 
 Before committing code, this repo has been setup to check Go files using [pre-commit git hooks](https://pre-commit.com/). To leverage pre-commit, developers must install pre-commit and associated tools locally:
 
