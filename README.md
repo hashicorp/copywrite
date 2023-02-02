@@ -133,13 +133,13 @@ that file is meant to be specific to each project and checked in to its repo.
 ## GitHub Action
 
 To make it easier to use `copywrite` in your own CI jobs (e.g., to add a PR check),
-you can make use of the `hashicorp/setup-copywrite` GitHub Action. It
+you can make use of the [hashicorp/setup-copywrite](https://github.com/marketplace/actions/setup-copywrite) GitHub Action. It
 automatically installs the binary and adds it to your `$PATH` so you can call it
 freely in later steps.
 
 ```yaml
   - name: Setup Copywrite
-    uses: hashicorp/setup-copywrite@main
+    uses: uses: hashicorp/setup-copywrite@3ace06ad72e6ec679ea8572457b17dbc3960b8ce # v1.0.0
 
   - name: Check Header Compliance
     run: copywrite headers --plan
@@ -161,6 +161,31 @@ snippet to your repo's `.pre-commit-config.yaml`:
     hooks:
       - id: copywrite-headers
 ```
+
+## Debugging
+
+Copywrite supports several built-in features to aid with debugging. The first
+and most commonly used one is configurable log levels. Copywrite checks the
+`COPYWRITE_LOG_LEVEL` environment variable to determine which verbosity to use.
+The following log levels are supported:
+
+- `trace`
+- `debug`
+- `info`
+- `warn`
+- `error`
+- `off` (disables logging)
+
+Copywrite also checks for if the `RUNNER_DEBUG=1` environment variable is set,
+which will cause it to default to debug-level logging. This environment variable
+is set by Github Actions when in debug mode, and can be a useful default.
+The `COPYWRITE_LOG_LEVEL` setting takes precedence, however.
+
+It is often useful to introspect information about the state Copywrite finds
+itself in. The `copywrite debug` command can print the running configuration,
+whether or not a config file was loaded, what GitHub auth type is in use, and
+more. No sensitive information is printed, however.  
+
 
 ## Development
 
