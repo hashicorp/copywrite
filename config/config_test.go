@@ -23,7 +23,8 @@ func Test_New(t *testing.T) {
 
 		// Validate the default value(s)
 		assert.Equal(t, 1, actualOutput.SchemaVersion, "Schema Version defaults to 1")
-		assert.Equal(t, "schema_version -> 1\n", actualOutput.Sprint(), "Koanf object gets updated appropriately with defaults")
+		assert.Equal(t, "HashiCorp, Inc.", actualOutput.Project.CopyrightHolder, "Copyright Holder defaults to 'HashiCorp, Inc.'")
+		assert.Equal(t, "project.copyright_holder -> HashiCorp, Inc.\nschema_version -> 1\n", actualOutput.Sprint(), "Koanf object gets updated appropriately with defaults")
 	})
 }
 
@@ -44,8 +45,9 @@ func Test_LoadConfMap(t *testing.T) {
 		globalKoanf:   koanf.New(delim),
 		SchemaVersion: 12,
 		Project: Project{
-			CopyrightYear: 9001,
-			License:       "MPL-2.0",
+			CopyrightHolder: "HashiCorp, Inc.",
+			CopyrightYear:   9001,
+			License:         "MPL-2.0",
 		},
 		Dispatch: Dispatch{
 			IgnoredRepos: []string{
@@ -87,8 +89,9 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 1,
 				Project: Project{
-					CopyrightYear: 9001,
-					License:       "MPL-2.0",
+					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightYear:   9001,
+					License:         "MPL-2.0",
 				},
 				Dispatch: Dispatch{
 					IgnoredRepos: []string{"foo", "bar"},
@@ -102,8 +105,9 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 12,
 				Project: Project{
-					CopyrightYear: 9001,
-					License:       "MPL-2.0",
+					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightYear:   9001,
+					License:         "MPL-2.0",
 				},
 				Dispatch: Dispatch{
 					IgnoredRepos: []string{"foo", "bar"},
@@ -117,8 +121,9 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 33,
 				Project: Project{
-					CopyrightYear: 9001,
-					License:       "MPL-2.0",
+					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightYear:   9001,
+					License:         "MPL-2.0",
 				},
 				Dispatch: Dispatch{
 					IgnoredRepos: []string{"foo", "bar"},
@@ -132,8 +137,9 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 33,
 				Project: Project{
-					CopyrightYear: 9001,
-					License:       "MPL-2.0",
+					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightYear:   9001,
+					License:         "MPL-2.0",
 				},
 				Dispatch: Dispatch{
 					IgnoredRepos: []string{"foo", "bar"},
@@ -189,6 +195,15 @@ func Test_LoadConfigFile(t *testing.T) {
 		},
 		// Test Project-Related Configuration
 		{
+			description:  "File with project.copyright_holder populates accordingly",
+			inputCfgPath: "testdata/project/copyright_holder_only.hcl",
+			expectedOutput: &Config{
+				Project: Project{
+					CopyrightHolder: "Dummy Corporation",
+				},
+			},
+		},
+		{
 			description:  "File with project.copyright_year populates accordingly",
 			inputCfgPath: "testdata/project/copyright_year_only.hcl",
 			expectedOutput: &Config{
@@ -222,8 +237,9 @@ func Test_LoadConfigFile(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 12,
 				Project: Project{
-					CopyrightYear: 9001,
-					License:       "NOT_A_VALID_SPDX",
+					CopyrightYear:   9001,
+					CopyrightHolder: "Dummy Corporation",
+					License:         "NOT_A_VALID_SPDX",
 					HeaderIgnore: []string{
 						"asdf.go",
 						"*.css",
@@ -294,6 +310,7 @@ func Test_Sprint(t *testing.T) {
 			description:  "File with full project populates accordingly",
 			inputCfgPath: "testdata/project/full_project.hcl",
 			expectedOutput: strings.Join([]string{
+				"project.copyright_holder -> Dummy Corporation",
 				"project.copyright_year -> 9001",
 				"project.header_ignore -> [asdf.go *.css **/vendors/**.go]",
 				"project.license -> NOT_A_VALID_SPDX",
