@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
-	github.com/hashicorp/addLicense v1.4.0
+	github.com/hashicorp/addLicense v1.4.1
 	github.com/hashicorp/go-hclog v1.4.0
 	github.com/jedib0t/go-pretty/v6 v6.4.4
 	github.com/knadh/koanf v1.5.0
