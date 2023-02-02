@@ -210,8 +210,8 @@ github.com/googleapis/google-cloud-go-testing v0.0.0-20200911160855-bcd43fbb19e8
 github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0/go.mod h1:8NvIoxWQoOIhqOTXgfV/d3M/q6VIi02HzZEHgUlZvzk=
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542 h1:2VTzZjLZBgl62/EtslCrtky5vbi9dd7HrQPQIx6wqiw=
-github.com/hashicorp/addLicense v1.3.0 h1:HWeyqN7tvJQaIL6gWMPhnI9MwaGhyue8ntXvXIiE8zQ=
-github.com/hashicorp/addLicense v1.3.0/go.mod h1:hdu2nu1sVqsSF9frnG6IqVgRwKztfuMvt4PAGsTSfyA=
+github.com/hashicorp/addLicense v1.4.0 h1:7DWR96L4XRz3FKTSoCuUhU2CRckgEx0rPZueUvCGTRw=
+github.com/hashicorp/addLicense v1.4.0/go.mod h1:hdu2nu1sVqsSF9frnG6IqVgRwKztfuMvt4PAGsTSfyA=
 github.com/hashicorp/consul/api v1.13.0/go.mod h1:ZlVrynguJKcYr54zGaDbaL3fOvKC9m72FhPvA8T35KQ=
 github.com/hashicorp/consul/sdk v0.8.0/go.mod h1:GBvyrGALthsZObzUGsfgHZQDXjg4lOjagTIwIR1vPms=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
