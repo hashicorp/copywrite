@@ -22,9 +22,10 @@ var (
 // Project represents data needed for copyright and licensing statements inside
 // a specific project/repo
 type Project struct {
-	CopyrightYear int      `koanf:"copyright_year"`
-	HeaderIgnore  []string `koanf:"header_ignore"`
-	License       string   `koanf:"license"`
+	CopyrightYear   int      `koanf:"copyright_year"`
+	CopyrightHolder string   `koanf:"copyright_holder"`
+	HeaderIgnore    []string `koanf:"header_ignore"`
+	License         string   `koanf:"license"`
 
 	// Upstream is optional and only used if a given repo pulls from another
 	Upstream string `koanf:"upstream"`
@@ -80,7 +81,8 @@ func New() (*Config, error) {
 
 	// Preload default config values
 	defaults := map[string]interface{}{
-		"schema_version": 1,
+		"schema_version":           1,
+		"project.copyright_holder": "HashiCorp, Inc.",
 	}
 	err := c.LoadConfMap(defaults)
 	if err != nil {
