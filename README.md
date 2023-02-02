@@ -147,6 +147,30 @@ freely in later steps.
 
 :bulb: Running the copywrite command with the `--plan` flag will return a non-zero exit code if the repo is out of compliance.
 
+## Debugging
+
+Copywrite supports several built-in features to aid with debugging. The first
+and most commonly used one is configurable log levels. Copywrite checks the
+`COPYWRITE_LOG_LEVEL` environment variable to determine which verbosity to use.
+The following log levels are supported:
+
+- `trace`
+- `debug`
+- `info`
+- `warn`
+- `error`
+- `off` (disables logging)
+
+Copywrite also checks for if the `RUNNER_DEBUG=1` environment variable is set,
+which will cause it to default to debug-level logging. This environment variable
+is set by Github Actions when in debug mode, and can be a useful default.
+The `COPYWRITE_LOG_LEVEL` setting takes precedence, however.
+
+It is often useful to introspect information about the state Copywrite finds
+itself in. The `copywrite debug` command can print the running configuration,
+whether or not a config file was loaded, what GitHub auth type is in use, and
+more. No sensitive information is printed, however.  
+
 ## Development
 
 ### IDE Settings

@@ -96,6 +96,8 @@ config, see the "copywrite init" command.`,
 
 		// Wrap hclogger to use standard lib's log.Logger
 		stdcliLogger := cliLogger.StandardLogger(&hclog.StandardLoggerOptions{
+			// InferLevels must be true so that addLicense can set the log level via
+			// log prefix, e.g. logger.Println("[DEBUG] this is inferred as a debug log")
 			InferLevels: true,
 		})
 
