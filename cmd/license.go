@@ -33,8 +33,9 @@ var licenseCmd = &cobra.Command{
 	PreRun: func(cmd *cobra.Command, args []string) {
 		// Map command flags to config keys
 		mapping := map[string]string{
-			`spdx`: `project.license`,
-			`year`: `project.copyright_year`,
+			`spdx`:             `project.license`,
+			`year`:             `project.copyright_year`,
+			`copyright-holder`: `project.copyright_holder`,
 		}
 
 		// update the running config with any command-line flags
@@ -63,9 +64,10 @@ var licenseCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		cmd.Printf("Licensing under the following terms: %s\n", conf.Project.License)
-		cmd.Printf("Using year of initial copyright: %v\n\n", conf.Project.CopyrightYear)
+		cmd.Printf("Using year of initial copyright: %v\n", conf.Project.CopyrightYear)
+		cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
 
-		copyright := "Copyright (c) " + strconv.Itoa(conf.Project.CopyrightYear) + " HashiCorp, Inc."
+		copyright := "Copyright (c) " + strconv.Itoa(conf.Project.CopyrightYear) + " " + conf.Project.CopyrightHolder
 
 		licenseFiles, err := licensecheck.FindLicenseFiles(dirPath)
 		if err != nil {
@@ -172,4 +174,5 @@ func init() {
 	// TODO: eventually, the copyrightYear should be dynamically inferred from the repo
 	licenseCmd.Flags().IntP("year", "y", 0, "Year that the copyright statement should include")
 	licenseCmd.Flags().StringP("spdx", "s", "", "SPDX License Identifier indicating what the LICENSE file should represent")
+	licenseCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"HashiCorp, Inc.\")")
 }
