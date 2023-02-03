@@ -36,7 +36,8 @@ config, see the "copywrite init" command.`,
 
 		// Map command flags to config keys
 		mapping := map[string]string{
-			`spdx`: `project.license`,
+			`spdx`:             `project.license`,
+			`copyright-holder`: `project.copyright_holder`,
 		}
 
 		// update the running config with any command-line flags
@@ -63,8 +64,9 @@ config, see the "copywrite init" command.`,
 		if conf.Project.License == "" {
 			cmd.Printf("The --spdx flag was not specified, omitting SPDX license statements.\n\n")
 		} else {
-			cmd.Printf("Using license identifier: %s\n\n", conf.Project.License)
+			cmd.Printf("Using license identifier: %s\n", conf.Project.License)
 		}
+		cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
 
 		if len(conf.Project.HeaderIgnore) == 0 {
 			cmd.Println("The project.header_ignore list was left empty in config. Processing all files by default.")
@@ -88,7 +90,7 @@ config, see the "copywrite init" command.`,
 		// Construct the configuration addLicense needs to properly format headers
 		licenseData := addlicense.LicenseData{
 			Year:   "", // by default, we don't include a year in copyright statements
-			Holder: "HashiCorp, Inc.",
+			Holder: conf.Project.CopyrightHolder,
 			SPDXID: conf.Project.License,
 		}
 
@@ -118,4 +120,5 @@ func init() {
 
 	// These flags will get mapped to keys in the the global Config
 	headersCmd.Flags().StringP("spdx", "s", "", "SPDX-compliant license identifier (e.g., 'MPL-2.0')")
+	headersCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"HashiCorp, Inc.\")")
 }

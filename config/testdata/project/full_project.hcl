@@ -1,8 +1,9 @@
 schema_version = 12
 
 project {
-  copyright_year = 9001
-  license        = "NOT_A_VALID_SPDX"
+  copyright_year   = 9001
+  copyright_holder = "Dummy Corporation"
+  license          = "NOT_A_VALID_SPDX"
 
   header_ignore = [
     "asdf.go",

@@ -93,6 +93,10 @@ project {
   # Default: "MPL-2.0"
   license = "MPL-2.0"
 
+  # (OPTIONAL) Represents the copyright holder used in all statements
+  # Default: HashiCorp, Inc.
+  # copyright_holder = ""
+
   # (OPTIONAL) Represents the year that the project initially began
   # Default: <the year the repo was first created>
   # copyright_year = 0
@@ -185,7 +189,6 @@ It is often useful to introspect information about the state Copywrite finds
 itself in. The `copywrite debug` command can print the running configuration,
 whether or not a config file was loaded, what GitHub auth type is in use, and
 more. No sensitive information is printed, however.  
-
 
 ## Development
 
