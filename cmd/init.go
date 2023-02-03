@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	addlicense "github.com/hashicorp/addLicense"
+	"github.com/hashicorp/copywrite/addlicense"
 	"github.com/hashicorp/copywrite/config"
 	"github.com/hashicorp/copywrite/github"
 	"github.com/jedib0t/go-pretty/v6/text"

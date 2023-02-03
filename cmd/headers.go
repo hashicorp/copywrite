@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	addlicense "github.com/hashicorp/addLicense"
+	"github.com/hashicorp/copywrite/addlicense"
 	"github.com/hashicorp/go-hclog"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/samber/lo"
@@ -81,7 +81,7 @@ config, see the "copywrite init" command.`,
 		autoSkippedPatterns := []string{
 			".github/workflows/**",
 			".github/dependabot.yml",
-      "**node_modules/**",
+			"**node_modules/**",
 		}
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
