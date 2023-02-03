@@ -37,6 +37,9 @@ brews:
       owner: hashicorp
       name: homebrew-tap
       branch: copywrite
+    commit_author:
+      name: ${{ secrets.commit_author_name }}
+      email: ${{ secrets.commit_author_email }}
     homepage: 'https://github.com/hashicorp/copywrite'
     description: 'copywrite -- utilities for managing copyright headers and license files for GitHub repos'
     license: 'MPL-2.0'
