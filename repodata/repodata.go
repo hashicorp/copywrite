@@ -17,10 +17,10 @@ import (
 )
 
 // GetRepos retrieves the repo data and places it into an array
-func GetRepos() ([]*github.Repository, error) {
+func GetRepos(githubOrganization string) ([]*github.Repository, error) {
 	client := gh.NewGHClient().Raw()
 
-	// list public repositories for org "hashicorp"
+	// list public repositories for org
 	opt := &github.RepositoryListByOrgOptions{
 		ListOptions: github.ListOptions{PerPage: 100}, // 100 is the max page size
 		Type:        "public",
@@ -29,7 +29,7 @@ func GetRepos() ([]*github.Repository, error) {
 	// pagination to always retrieve the exact number of repos and all metadata regarding them
 	var allRepos []*github.Repository
 	for {
-		repos, current, err := client.Repositories.ListByOrg(context.Background(), "HashiCorp", opt)
+		repos, current, err := client.Repositories.ListByOrg(context.Background(), githubOrganization, opt)
 		if err != nil {
 			hclog.L().Error(err.Error())
 

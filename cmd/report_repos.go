@@ -4,6 +4,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/hashicorp/copywrite/repodata"
@@ -12,8 +13,9 @@ import (
 
 // Flag variables
 var (
-	fields    string
-	fieldsArr []string
+	fields           string
+	fieldsArr        []string
+	githubOrgToAudit string
 )
 
 // reportReposCmd represents the report command
@@ -34,10 +36,10 @@ Outputs the fields you specify in a repodata.csv file in the working directory.`
 		cobra.CheckErr(err)
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		// get all public repos under the HashiCorp org
-		unfilteredRepos, err := repodata.GetRepos()
+		// get all public repos under org
+		unfilteredRepos, err := repodata.GetRepos(githubOrgToAudit)
 		if err != nil {
-			cliLogger.Error("Error retrieving public Hashicorp repos", err)
+			cliLogger.Error(fmt.Sprintf("Error retrieving public repos for the \"%v\" org", githubOrgToAudit), err)
 		}
 		cobra.CheckErr(err)
 
@@ -90,4 +92,5 @@ func init() {
 	reportCmd.AddCommand(reportReposCmd)
 
 	reportReposCmd.Flags().StringVarP(&fields, "fields", "f", "Name,License,HTMLURL", "Repo attributes you wish to report on")
+	reportReposCmd.Flags().StringVar(&githubOrgToAudit, "github-org", "hashicorp", "Sets the target GitHub org who's repos you wish to audit")
 }

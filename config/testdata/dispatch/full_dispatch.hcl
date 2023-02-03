@@ -5,6 +5,8 @@ dispatch {
 
   branch = "main"
 
+  github_org_to_audit = "hashicorp-forge"
+
   ignored_repos = [
     "org/repo1",
     "org/repo2",
