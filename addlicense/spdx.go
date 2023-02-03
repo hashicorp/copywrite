@@ -1867,6 +1867,7 @@ var spdxIds = []string{
 	"zlib-acknowledgement",
 }
 
+// ValidSPDX takes in a string and returns true if it represents a valid SPDX ID
 func ValidSPDX(id string) bool {
 	for _, v := range spdxIds {
 		if v == id {

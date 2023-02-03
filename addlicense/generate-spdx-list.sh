@@ -50,6 +50,7 @@ done
 cat <<EOF | tee -a "$OUTPUT_FILE_PATH"
 }
 
+// ValidSPDX takes in a string and returns true if it represents a valid SPDX ID
 func ValidSPDX(id string) bool {
 	for _, v := range spdxIds {
 		if v == id {
