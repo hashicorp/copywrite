@@ -1,0 +1,44 @@
+{
+  // Editor settings
+  "editor.formatOnSave": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  // json auto-formatting can get weird
+  "[json]": {
+    "editor.formatOnSave": false
+  },
+  // Go settings
+  "go.buildOnSave": "off",
+  "go.lintOnSave": "workspace",
+  "go.vetOnSave": "workspace",
+  "go.buildTags": "",
+  "go.buildFlags": [],
+  "go.lintTool": "golint",
+  "go.lintFlags": [],
+  "go.vetFlags": [],
+  "go.testOnSave": false,
+  "go.coverOnSave": false,
+  "go.useCodeSnippetsOnFunctionSuggest": true,
+  "go.formatTool": "gofmt",
+  "go.formatFlags": [],
+  "go.inferGopath": false,
+  "go.gocodeAutoBuild": false,
+  "go.testFlags": [
+    "-v"
+  ],
+  "cSpell.words": [
+    "addlicense",
+    "busa",
+    "checkonly",
+    "haya",
+    "headerignore",
+    "licensef",
+    "SPDXID"
+  ],
+  "markdownlint.ignore": [
+    ".github/pull_request_template.md"
+  ],
+  "markdownlint.config": {
+    "line-length": false
+  }
+}
