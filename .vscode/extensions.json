@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "golang.go", // Enables rich Golang autocomplete and intellisense
+    "mechatroner.rainbow-csv", // Makes CSVs easier to read
+    "cschleiden.vscode-github-actions", // Provides autocomplete for GitHub Actions
+    "DavidAnson.vscode-markdownlint", // Markdown linting for consistency
+  ]
+}
