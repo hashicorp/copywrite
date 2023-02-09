@@ -36,7 +36,6 @@ brews:
     tap:
       owner: hashicorp
       name: homebrew-tap
-      branch: copywrite
     commit_author:
       name: '{{ .Env.HOMEBREW_COMMIT_AUTHOR_NAME }}'
       email: '{{ .Env.HOMEBREW_COMMIT_EMAIL }}'
