@@ -452,7 +452,7 @@ func hasLicense(b []byte) bool {
 	if len(b) < 1000 {
 		n = len(b)
 	}
-	return bytes.Contains(bytes.ToLower(b[:n]), []byte("copyright")) ||
+	return bytes.Contains(bytes.ToLower(b[:n]), []byte("spdx-filecopyrighttext")) ||
 		bytes.Contains(bytes.ToLower(b[:n]), []byte("mozilla public")) ||
 		bytes.Contains(bytes.ToLower(b[:n]), []byte("spdx-license-identifier"))
 }
