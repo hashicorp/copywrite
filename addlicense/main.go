@@ -295,13 +295,13 @@ func walk(ch chan<- *file, start string, logger *log.Logger) error {
 // Patterns are assumed to be valid.
 func fileMatches(path string, patterns []string) bool {
 	for _, p := range patterns {
-		
+
 		if runtime.GOOS == "windows" {
 			// If on windows, change path seperators to /
-			// in order for patterns to compare correctly 
+			// in order for patterns to compare correctly
 			path = filepath.ToSlash(path)
 		}
-		
+
 		// ignore error, since we assume patterns are valid
 		if match, _ := doublestar.Match(p, path); match {
 			return true
@@ -451,7 +451,7 @@ func hasLicense(b []byte) bool {
 	if len(b) < 1000 {
 		n = len(b)
 	}
-	return bytes.Contains(bytes.ToLower(b[:n]), []byte("copyright")) ||
+	return bytes.Contains(bytes.ToLower(b[:n]), []byte("spdx-filecopyrighttext")) ||
 		bytes.Contains(bytes.ToLower(b[:n]), []byte("mozilla public")) ||
 		bytes.Contains(bytes.ToLower(b[:n]), []byte("spdx-license-identifier"))
 }
