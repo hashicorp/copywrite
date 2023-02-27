@@ -7,7 +7,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
 	github.com/hashicorp/go-hclog v1.4.0
-	github.com/jedib0t/go-pretty/v6 v6.4.4
+	github.com/jedib0t/go-pretty/v6 v6.4.5
 	github.com/knadh/koanf v1.5.0
 	github.com/mattn/go-isatty v0.0.17
 	github.com/mergestat/timediff v0.0.3
@@ -54,7 +54,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
 	golang.org/x/net v0.0.0-20220923203811-8be639271d50 // indirect
-	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
