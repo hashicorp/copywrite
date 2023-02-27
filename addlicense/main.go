@@ -412,6 +412,7 @@ var head = []string{
 	"<?php",                    // PHP opening tag
 	"# escape",                 // Dockerfile directive https://docs.docker.com/engine/reference/builder/#parser-directives
 	"# syntax",                 // Dockerfile directive https://docs.docker.com/engine/reference/builder/#parser-directives
+	"/** @jest-environment",    // Jest environment directive: https://jestjs.io/docs/configuration#testenvironment-string
 }
 
 func hashBang(b []byte) []byte {
