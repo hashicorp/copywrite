@@ -295,13 +295,13 @@ func walk(ch chan<- *file, start string, logger *log.Logger) error {
 // Patterns are assumed to be valid.
 func fileMatches(path string, patterns []string) bool {
 	for _, p := range patterns {
-		
+
 		if runtime.GOOS == "windows" {
 			// If on windows, change path seperators to /
-			// in order for patterns to compare correctly 
+			// in order for patterns to compare correctly
 			path = filepath.ToSlash(path)
 		}
-		
+
 		// ignore error, since we assume patterns are valid
 		if match, _ := doublestar.Match(p, path); match {
 			return true
@@ -412,6 +412,7 @@ var head = []string{
 	"<?php",                    // PHP opening tag
 	"# escape",                 // Dockerfile directive https://docs.docker.com/engine/reference/builder/#parser-directives
 	"# syntax",                 // Dockerfile directive https://docs.docker.com/engine/reference/builder/#parser-directives
+	"/** @jest-environment",    // Jest Environment string https://jestjs.io/docs/configuration#testenvironment-string
 }
 
 func hashBang(b []byte) []byte {

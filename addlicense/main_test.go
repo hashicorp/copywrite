@@ -245,6 +245,7 @@ func TestAddLicense(t *testing.T) {
 		{"<?php\ncontent", "<?php\n// HYS\n\ncontent", true},
 		{"# escape: `\ncontent", "# escape: `\n// HYS\n\ncontent", true},
 		{"# syntax: docker/dockerfile:1.3\ncontent", "# syntax: docker/dockerfile:1.3\n// HYS\n\ncontent", true},
+		{"/** @jest-environment jsdom */\ncontent", "/** @jest-environment jsdom */\n// HYS\n\ncontent", true},
 
 		// ensure files with existing license or generated files are
 		// skipped. No need to test all permutations of these, since
