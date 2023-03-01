@@ -375,7 +375,7 @@ func licenseHeader(path string, tmpl *template.Template, data LicenseData) ([]by
 	case ".hs", ".sql", ".sdl":
 		lic, err = executeTemplate(tmpl, data, "", "-- ", "")
 	case ".hbs":
-		lic, err = executeTemplate(tmpl, data, "{{!--", "  ", "--}}")
+		lic, err = executeTemplate(tmpl, data, "{{!", "  ", "}}")
 	case ".html", ".htm", ".xml", ".vue", ".wxi", ".wxl", ".wxs":
 		lic, err = executeTemplate(tmpl, data, "<!--", " ", "-->")
 	case ".php":
