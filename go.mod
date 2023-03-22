@@ -63,7 +63,7 @@ require (
 )
 
 require (
-	github.com/cli/go-gh v1.0.0
+	github.com/cli/go-gh v1.2.1
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-github/v45 v45.2.0
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
