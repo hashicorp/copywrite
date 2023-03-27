@@ -6,7 +6,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.6
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
-	github.com/hashicorp/go-hclog v1.4.0
+	github.com/hashicorp/go-hclog v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.4
 	github.com/knadh/koanf v1.5.0
 	github.com/mattn/go-isatty v0.0.17
