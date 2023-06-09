@@ -8,7 +8,7 @@ project {
   header_ignore = [
     "asdf.go",
     "*.css",
-    "**/vendors/**.go",
+    "**/vendor/**.go",
   ]
 
   upstream = "hashicorp/super-secret-private-repo"
