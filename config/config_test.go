@@ -246,7 +246,7 @@ func Test_LoadConfigFile(t *testing.T) {
 					HeaderIgnore: []string{
 						"asdf.go",
 						"*.css",
-						"**/vendors/**.go",
+						"**/vendor/**.go",
 					},
 					Upstream: "hashicorp/super-secret-private-repo",
 				},
@@ -316,7 +316,7 @@ func Test_Sprint(t *testing.T) {
 			expectedOutput: strings.Join([]string{
 				"project.copyright_holder -> Dummy Corporation",
 				"project.copyright_year -> 9001",
-				"project.header_ignore -> [asdf.go *.css **/vendors/**.go]",
+				"project.header_ignore -> [asdf.go *.css **/vendor/**.go]",
 				"project.license -> NOT_A_VALID_SPDX",
 				"project.upstream -> hashicorp/super-secret-private-repo",
 				"schema_version -> 12\n",
