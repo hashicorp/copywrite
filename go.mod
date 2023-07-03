@@ -71,6 +71,6 @@ require (
 	github.com/google/go-github/v45 v45.2.0
 	github.com/jedib0t/go-pretty v4.3.0+incompatible
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/samber/lo v1.37.0
+	github.com/samber/lo v1.38.1
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
