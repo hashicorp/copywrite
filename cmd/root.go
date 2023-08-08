@@ -62,6 +62,9 @@ func init() {
 	})
 
 	rootCmd.PersistentFlags().StringVar(&cfgPath, "config", ".copywrite.hcl", "config file")
+
+	// Let's make sure Cobra doesn't default to stderr
+	rootCmd.SetOut(os.Stdout)
 }
 
 func initConfig() {

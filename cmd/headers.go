@@ -105,6 +105,11 @@ config, see the "copywrite init" command.`,
 			// log prefix, e.g. logger.Println("[DEBUG] this is inferred as a debug log")
 			InferLevels: true,
 		})
+		// Redirect output to stdout to match the rest of the command output structure
+		// Ideally, we would differentiate inside the addlicense run, but in lieu of
+		// reworking the entire logging functionality there, this at least gets us
+		// consistency and fixes a race condition when using GitHub Action log groups
+		stdcliLogger.SetOutput(os.Stdout)
 
 		gha.StartGroup("The following files are missing headers:")
 		err := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
