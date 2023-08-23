@@ -314,7 +314,7 @@ func TestLicenseHeader(t *testing.T) {
 		},
 		{
 			[]string{"f.cc", "f.cpp", "f.cs", "f.go", "f.hh", "f.hpp", "f.m", "f.mm", "f.proto",
-				"f.rs", "f.swift", "f.dart", "f.groovy", "f.v", "f.sv", "f.php"},
+				"f.rs", "f.swift", "f.dart", "f.groovy", "f.v", "f.sv", "f.php", "f.lr"},
 			"// HYS\n\n",
 		},
 		{
