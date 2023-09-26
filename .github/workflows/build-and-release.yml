@@ -21,10 +21,10 @@ jobs:
           go-version-file: '.go-version'
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@336e29918d653399e599bfca99fadc1d7ffbc9f7 # v4.3.0
+        uses: goreleaser/goreleaser-action@7ec5c2b0c6cdda6e8bbb49444bc797dd33d74dd8 # v5.0.0
         with:
           version: latest
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
           HOMEBREW_COMMIT_AUTHOR_NAME: ${{ secrets.HOMEBREW_COMMIT_AUTHOR_NAME }}
