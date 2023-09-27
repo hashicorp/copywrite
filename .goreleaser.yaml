@@ -19,8 +19,12 @@ builds:
       - -s -w -X github.com/hashicorp/copywrite/cmd.version={{.Version}} -X github.com/hashicorp/copywrite/cmd.commit={{.ShortCommit}}
     binary: copywrite
 archives:
-  - replacements:
-      amd64: x86_64
+  - name_template: >-
+      {{- .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
     format_overrides:
       - goos: windows
         format: zip
@@ -36,7 +40,7 @@ release:
 # Auto-publish to the HashiCorp homebrew tap: https://github.com/hashicorp/homebrew-tap
 brews:
   - name: copywrite
-    tap:
+    repository:
       owner: hashicorp
       name: homebrew-tap
     commit_author:
