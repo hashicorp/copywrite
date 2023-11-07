@@ -105,11 +105,12 @@ config, see the "copywrite init" command.`,
 			// log prefix, e.g. logger.Println("[DEBUG] this is inferred as a debug log")
 			InferLevels: true,
 		})
-		// Redirect output to stdout to match the rest of the command output structure
-		// Ideally, we would differentiate inside the addlicense run, but in lieu of
-		// reworking the entire logging functionality there, this at least gets us
-		// consistency and fixes a race condition when using GitHub Action log groups
-		stdcliLogger.SetOutput(os.Stdout)
+
+		// WARNING: because of the way we redirect cliLogger to os.Stdout, anything
+		// prefixed with "[ERROR]" will not implicitly be written to stderr.
+		// However, we propagate errors upward from addlicense and then run a
+		// cobra.CheckErr on the return, which will indeed output to stderr and
+		// return a non-zero error code.
 
 		gha.StartGroup("The following files are missing headers:")
 		err := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
