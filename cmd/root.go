@@ -96,8 +96,9 @@ func initLogger() {
 
 	hclog.Default().Named("cli")
 	cliLogger = hclog.New(&hclog.LoggerOptions{
-		Name:  "cli",
-		Level: logLevel,
-		Color: hclog.AutoColor,
+		Name:   "cli",
+		Level:  logLevel,
+		Color:  hclog.AutoColor,
+		Output: os.Stdout,
 	})
 }
