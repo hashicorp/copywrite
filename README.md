@@ -143,7 +143,7 @@ freely in later steps.
 
 ```yaml
   - name: Setup Copywrite
-    uses: hashicorp/setup-copywrite@v1.1.2
+    uses: hashicorp/setup-copywrite@867a1a2a064a0626db322392806428f7dc59cb3e # v1.1.2
 
   - name: Check Header Compliance
     run: copywrite headers --plan
