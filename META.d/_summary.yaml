@@ -1,0 +1,7 @@
+schema: 1.1
+category: service
+summary:
+  owner: team-productivity-systems-and-services
+  description: |
+    Utility for managing copyright headers and license files across repos
+  visibility: external
