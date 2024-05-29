@@ -86,7 +86,7 @@ config, see the "copywrite init" command.`,
 		autoSkippedPatterns := []string{
 			".github/workflows/**",
 			".github/dependabot.yml",
-			"**node_modules/**",
+			"**/node_modules/**",
 		}
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
