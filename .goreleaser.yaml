@@ -1,6 +1,6 @@
 # Copyright (c) HashiCorp, Inc.
 # SPDX-License-Identifier: MPL-2.0
-
+version: 2
 before:
   hooks:
     - go mod tidy
@@ -49,6 +49,6 @@ brews:
     homepage: 'https://github.com/hashicorp/copywrite'
     description: 'copywrite -- utilities for managing copyright headers and license files for GitHub repos'
     license: 'MPL-2.0'
-    folder: Formula
+    directory: Formula
     test: |
       system "#{bin}/copywrite --version"
