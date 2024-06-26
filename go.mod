@@ -3,7 +3,7 @@ module github.com/hashicorp/copywrite
 go 1.18
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.3.6
+	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0
 	github.com/hashicorp/go-hclog v1.5.0
