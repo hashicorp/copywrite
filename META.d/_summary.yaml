@@ -1,5 +1,6 @@
 schema: 1.1
-category: service
+partition: internal-platform
+category: tooling
 summary:
   owner: team-productivity-systems-and-services
   description: |
