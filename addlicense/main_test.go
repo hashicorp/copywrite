@@ -15,7 +15,6 @@
 package addlicense
 
 import (
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,7 +32,7 @@ func run(t *testing.T, name string, args ...string) {
 }
 
 func tempDir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "addlicense")
+	dir, err := os.MkdirTemp("", "addlicense")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,12 +208,12 @@ func TestMPL(t *testing.T) {
 }
 
 func createTempFile(contents string, pattern string) (*os.File, error) {
-	f, err := ioutil.TempFile("", pattern)
+	f, err := os.CreateTemp("", pattern)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := ioutil.WriteFile(f.Name(), []byte(contents), 0644); err != nil {
+	if err := os.WriteFile(f.Name(), []byte(contents), 0644); err != nil {
 		return nil, err
 	}
 
@@ -275,7 +274,7 @@ func TestAddLicense(t *testing.T) {
 		if updated != tt.wantUpdated {
 			t.Errorf("addLicense with contents %q returned updated: %t, want %t", tt.contents, updated, tt.wantUpdated)
 		}
-		gotContents, err := ioutil.ReadFile(f.Name())
+		gotContents, err := os.ReadFile(f.Name())
 		if err != nil {
 			t.Error(err)
 		}
