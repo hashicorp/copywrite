@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	ghcli "github.com/cli/go-gh"
+	"github.com/cli/go-gh/v2/pkg/repository"
 	"github.com/google/go-github/v45/github"
 )
 
@@ -24,14 +24,14 @@ type GHRepo struct {
 // associated with the given folder. This can happen if multiple git upstreams
 // defined.
 func DiscoverRepo() (GHRepo, error) {
-	repo, err := ghcli.CurrentRepository()
+	repo, err := repository.Current()
 	if err != nil {
 		return GHRepo{}, fmt.Errorf("unable to determine if the current directory relates to a GitHub repo: %v", err)
 	}
 
 	return GHRepo{
-		Name:  repo.Name(),
-		Owner: repo.Owner(),
+		Name:  repo.Name,
+		Owner: repo.Owner,
 	}, nil
 }
 
