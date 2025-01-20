@@ -18,7 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 	"text/template"
 	"unicode"
@@ -55,7 +55,7 @@ func fetchTemplate(license string, templateFile string, spdx spdxFlag) (string, 
 	if spdx == spdxOnly {
 		t = tmplSPDX
 	} else if templateFile != "" {
-		d, err := ioutil.ReadFile(templateFile)
+		d, err := os.ReadFile(templateFile)
 		if err != nil {
 			return "", fmt.Errorf("license file: %w", err)
 		}
