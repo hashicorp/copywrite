@@ -34,7 +34,7 @@ func TestFetchTemplate(t *testing.T) {
 		description  string   // test case description
 		license      string   // license passed to fetchTemplate
 		templateFile string   // templatefile passed to fetchTemplate
-		spdx         spdxFlag // spdx value passed to fetchTemplate
+		spdx         SpdxFlag // spdx value passed to fetchTemplate
 		wantTemplate string   // expected returned template
 		wantErr      error    // expected returned error
 	}{
