@@ -53,7 +53,7 @@ Flags:
 var (
 	skipExtensionFlags stringSlice
 	ignorePatterns     stringSlice
-	spdx               spdxFlag
+	spdx               SpdxFlag
 
 	holder    = flag.String("c", "Google LLC", "copyright holder")
 	license   = flag.String("l", "apache", "license type: apache, bsd, mit, mpl")
@@ -85,22 +85,22 @@ func (i *stringSlice) Set(value string) error {
 	return nil
 }
 
-// spdxFlag defines the line flag behavior for specifying SPDX support.
-type spdxFlag string
+// SpdxFlag defines the line flag behavior for specifying SPDX support.
+type SpdxFlag string
 
 const (
-	spdxOff  spdxFlag = ""
-	spdxOn   spdxFlag = "true" // value set by flag package on bool flag
-	spdxOnly spdxFlag = "only"
+	spdxOff  SpdxFlag = ""
+	spdxOn   SpdxFlag = "true" // value set by flag package on bool flag
+	spdxOnly SpdxFlag = "only"
 )
 
 // IsBoolFlag causes a bare '-s' flag to be set as the string 'true'.  This
 // allows the use of the bare '-s' or setting a string '-s=only'.
-func (i *spdxFlag) IsBoolFlag() bool { return true }
-func (i *spdxFlag) String() string   { return string(*i) }
+func (i *SpdxFlag) IsBoolFlag() bool { return true }
+func (i *SpdxFlag) String() string   { return string(*i) }
 
-func (i *spdxFlag) Set(value string) error {
-	v := spdxFlag(value)
+func (i *SpdxFlag) Set(value string) error {
+	v := SpdxFlag(value)
 	if v != spdxOn && v != spdxOnly {
 		return fmt.Errorf("error: flag 's' expects '%v' or '%v'", spdxOn, spdxOnly)
 	}
@@ -180,7 +180,7 @@ func validatePatterns(patterns []string) error {
 // Run executes addLicense with supplied variables
 func Run(
 	ignorePatternList []string,
-	spdx spdxFlag,
+	spdx SpdxFlag,
 	license LicenseData,
 	licenseFileOverride string, // Provide a file to use as the license header
 	verbose bool,
