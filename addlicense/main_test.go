@@ -407,6 +407,7 @@ func TestHasLicense(t *testing.T) {
 		{"Subject to the terms of the Mozilla Public License", true},
 		{"SPDX-License-Identifier: MIT", true},
 		{"spdx-license-identifier: MIT", true},
+		{"© 2000 Acme Inc.", true},
 	}
 
 	for _, tt := range tests {
