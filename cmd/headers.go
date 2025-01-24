@@ -97,10 +97,12 @@ config, see the "copywrite init" command.`,
 			SPDXID: conf.Project.License,
 		}
 
-		// If custom license template is configured, reate a temporary file
+		// By default force addlicense's SDPX template
+		var useSPDX addlicense.SpdxFlag = "only"
+
+		// If custom license template is configured, create a temporary file
 		// and write template to it
 		licenseFile := ""
-		var useSPDX addlicense.SpdxFlag = "only"
 		if conf.Project.LicenseTemplate != "" {
 			errMsg := "Failed to create a temporary file for custom license template: %v\n\n"
 			if f, e := os.CreateTemp("", "copywrite-custom-license.tpl"); e == nil {
