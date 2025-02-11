@@ -245,6 +245,17 @@ func TestAddLicense(t *testing.T) {
 		{"# escape: `\ncontent", "# escape: `\n// HYS\n\ncontent", true},
 		{"# syntax: docker/dockerfile:1.3\ncontent", "# syntax: docker/dockerfile:1.3\n// HYS\n\ncontent", true},
 		{"/** @jest-environment jsdom */\ncontent", "/** @jest-environment jsdom */\n// HYS\n\ncontent", true},
+		{
+			"# This policy requires immediate action.\n# This is a follow-up comment.\n# Another line of policy.\nSome text that should not match.",
+			"# This policy requires immediate action.\n# This is a follow-up comment.\n# Another line of policy.\n// HYS\n\nSome text that should not match.",
+			true,
+		},
+		{
+			`# This policy requires that the max_password_age attribute of the aws_iam_account_password_policy
+			# resource is according to CIS standards.`,
+			"# This policy requires that the max_password_age attribute of the aws_iam_account_password_policy\n\t\t\t# resource is according to CIS standards.\n// HYS\n\n",
+			true,
+		},
 
 		// ensure files with existing license or generated files are
 		// skipped. No need to test all permutations of these, since

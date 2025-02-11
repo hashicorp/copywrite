@@ -414,8 +414,31 @@ var head = []string{
 	"/** @jest-environment",    // Jest Environment string https://jestjs.io/docs/configuration#testenvironment-string
 }
 
+var headPatterns = []string{
+	`# This policy requires.*\s*(#.*\s*)*`,
+}
+
+// matches regex patterns to extract headings to skip
+func matchPattern(b []byte) []byte {
+
+	for _, v := range headPatterns {
+		re := regexp.MustCompile(v)
+		match := re.Find(b)
+		if len(match) > 0 {
+			return match
+		}
+	}
+	return []byte{}
+}
+
 func hashBang(b []byte) []byte {
 	var line []byte
+
+	line = matchPattern(b)
+	if len(line) > 0 {
+		return line
+	}
+
 	for _, c := range b {
 		line = append(line, c)
 		if c == '\n' {
@@ -428,6 +451,7 @@ func hashBang(b []byte) []byte {
 			return line
 		}
 	}
+
 	return nil
 }
 
