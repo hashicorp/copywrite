@@ -328,7 +328,7 @@ func addLicense(path string, fmode os.FileMode, tmpl *template.Template, data Li
 		return false, err
 	}
 
-	line := hashBang(b)
+	line := hashBang(b, path)
 	if len(line) > 0 {
 		b = b[len(line):]
 		if line[len(line)-1] != '\n' {
@@ -365,7 +365,7 @@ func licenseHeader(path string, tmpl *template.Template, data LicenseData) ([]by
 		lic, err = executeTemplate(tmpl, data, "/**", " * ", " */")
 	case ".cc", ".cpp", ".cs", ".go", ".hh", ".hpp", ".m", ".mm", ".proto", ".rs", ".swift", ".dart", ".groovy", ".v", ".sv", ".lr":
 		lic, err = executeTemplate(tmpl, data, "", "// ", "")
-	case ".py", ".sh", ".bash", ".zsh", ".yaml", ".yml", ".dockerfile", "dockerfile", ".rb", "gemfile", ".ru", ".tcl", ".hcl", ".tf", ".tfvars", ".nomad", ".bzl", ".pl", ".pp", ".ps1", ".psd1", ".psm1", ".txtar":
+	case ".py", ".sh", ".bash", ".zsh", ".yaml", ".yml", ".dockerfile", "dockerfile", ".rb", "gemfile", ".ru", ".tcl", ".hcl", ".tf", ".tfvars", ".nomad", ".bzl", ".pl", ".pp", ".ps1", ".psd1", ".psm1", ".txtar", ".sentinel":
 		lic, err = executeTemplate(tmpl, data, "", "# ", "")
 	case ".el", ".lisp":
 		lic, err = executeTemplate(tmpl, data, "", ";; ", "")
@@ -414,12 +414,25 @@ var head = []string{
 	"/** @jest-environment",    // Jest Environment string https://jestjs.io/docs/configuration#testenvironment-string
 }
 
-var headPatterns = []string{
-	`# This policy requires.*\s*(#.*\s*)*`,
+// We need to skip the top file comments in sentinel files because they are are currently used to
+// show policy text in UI in TFC. The patterns are created based on the comment format given
+// in https://developer.hashicorp.com/sentinel/docs/language/spec#comments
+var sentinelHeadPatterns = []string{
+	`^#.*\n?(#.*\n?)*`,
+	`^//.*\n?(//.*\n?)*`,
+	`^/\*.*\n?(.*\n?)*\*/`,
 }
 
 // matches regex patterns to extract headings to skip
-func matchPattern(b []byte) []byte {
+func matchPattern(b []byte, path string) []byte {
+	base := strings.ToLower(filepath.Base(path))
+	var headPatterns []string
+	switch fileExtension(base) {
+	case ".sentinel":
+		headPatterns = sentinelHeadPatterns
+	default:
+		headPatterns = []string{}
+	}
 
 	for _, v := range headPatterns {
 		re := regexp.MustCompile(v)
@@ -431,10 +444,10 @@ func matchPattern(b []byte) []byte {
 	return []byte{}
 }
 
-func hashBang(b []byte) []byte {
+func hashBang(b []byte, path string) []byte {
 	var line []byte
 
-	line = matchPattern(b)
+	line = matchPattern(b, path)
 	if len(line) > 0 {
 		return line
 	}
