@@ -418,9 +418,9 @@ var head = []string{
 // show policy text in UI in TFC. The patterns are created based on the comment format given
 // in https://developer.hashicorp.com/sentinel/docs/language/spec#comments
 var sentinelHeadPatterns = []string{
-	`^#.*\n?(#.*\n?)*`,
-	`^//.*\n?(//.*\n?)*`,
-	`^/\*.*\n?(.*\n?)*\*/`,
+	`^#.*\n?(#.*\n?)*\n`,
+	`^//.*\n?(//.*\n?)*\n`,
+	`^/\*.*\n?(.*\n?)*\*/\n\n`,
 }
 
 // matches regex patterns to extract headings to skip
