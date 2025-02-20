@@ -1,0 +1,78 @@
+import "tfconfig/v2" as tfconfig
+import "tfplan/v2" as tfplan
+import "tfresources" as tf
+import "report" as report
+import "collection" as collection
+import "collection/maps" as maps
+
+# Constants
+
+const = {
+	"resource_efs_file_system":      "aws_efs_file_system",
+	"policy_name":                   "efs-encryption-at-rest-enabled",
+	"kms_key_id":                    "kms_key_id",
+	"constant_value":                "constant_value",
+	"encrypted":                     "encrypted",
+	"encrypted_attr_violation_msg":  "Attribute 'encrypted' should be true for 'aws_efs_file_system' resources. Refer to https://docs.aws.amazon.com/securityhub/latest/userguide/efs-controls.html#efs-1 for more details.",
+	"kms_key_id_attr_violation_msg": "Attribute 'kms_key_id' should be non empty for 'aws_efs_file_system' resources. Refer to https://docs.aws.amazon.com/securityhub/latest/userguide/efs-controls.html#efs-1 for more details.",
+}
+
+# Functions
+
+build_violation_object = func(res, message) {
+	return {
+		"address":        res.address,
+		"module_address": res.module_address,
+		"message":        message,
+	}
+}
+
+# Variables
+
+efs_file_systems_from_plan = tf.plan(tfplan.planned_values.resources).type(const.resource_efs_file_system).resources
+
+# Filter out aws_efs_file_systems that have invalid 'encrypted' attribute
+non_encrypted_file_systems = collection.reject(efs_file_systems_from_plan, func(res) {
+	encrypted_val = maps.get(res, "values.encrypted", false)
+	return encrypted_val is true
+})
+
+non_encrypted_file_systems_violations = map non_encrypted_file_systems as _, res {
+	build_violation_object(res, const.encrypted_attr_violation_msg)
+}
+
+efs_file_systems_from_configs = tf.config(tfconfig.resources).type(const.resource_efs_file_system).resources
+
+# Filter out aws_efs_file_systems that have empty 'kms_key_id' attribute
+efs_resources_with_empty_kms_key_ids = collection.reject(efs_file_systems_from_configs, func(res) {
+	key_path = "config.kms_key_id"
+	return maps.get(res, key_path, false) is not false and
+		maps.get(res, key_path + "." + const.constant_value, false) is not ""
+})
+
+efs_resources_with_empty_kms_key_ids_violations = map efs_resources_with_empty_kms_key_ids as _, res {
+	build_violation_object(res, const.kms_key_id_attr_violation_msg)
+}
+
+summary = {
+	"policy_name": const.policy_name,
+	"violations":  non_encrypted_file_systems_violations + efs_resources_with_empty_kms_key_ids_violations,
+}
+
+# Outputs
+
+print(report.generate_policy_report(summary))
+
+# Rules
+
+verify_non_encrypted_file_systems = rule {
+	non_encrypted_file_systems_violations is empty
+}
+
+verify_kms_key_referencing_file_systems = rule {
+	efs_resources_with_empty_kms_key_ids_violations is empty
+}
+
+main = rule {
+	verify_non_encrypted_file_systems and verify_kms_key_referencing_file_systems
+}

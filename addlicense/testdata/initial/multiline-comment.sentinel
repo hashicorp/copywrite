@@ -1,0 +1,11 @@
+/* This policy requires that the `require_lowercase_characters` attribute of the `aws_iam_account_password_policy`
+resource is according to CIS standards. */
+
+# Imports
+
+import "tfconfig/v2" as tfconfig
+import "tfplan/v2" as tfplan
+import "tfresources" as tf
+import "report" as report
+import "collection" as collection
+import "collection/maps" as maps
