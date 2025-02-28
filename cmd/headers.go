@@ -97,6 +97,29 @@ config, see the "copywrite init" command.`,
 			SPDXID: conf.Project.License,
 		}
 
+		// By default force addlicense's SDPX template
+		var useSPDX addlicense.SpdxFlag = "only"
+
+		// If custom license template is configured, create a temporary file
+		// and write template to it
+		licenseFile := ""
+		if conf.Project.LicenseTemplate != "" {
+			errMsg := "Failed to create a temporary file for custom license template: %v\n\n"
+			if f, e := os.CreateTemp("", "copywrite-custom-license.tpl"); e == nil {
+				licenseFile = f.Name()
+				useSPDX = "" // Don't force SPDX template in case of custom template
+				defer os.Remove(f.Name())
+				if _, e := f.WriteString(conf.Project.LicenseTemplate); e != nil {
+					cmd.Print(text.FgRed.Sprintf(errMsg, e))
+					return
+				}
+				f.Close()
+			} else {
+				cmd.Print(text.FgRed.Sprintf(errMsg, e))
+				return
+			}
+		}
+
 		verbose := true
 
 		// Wrap hclogger to use standard lib's log.Logger
@@ -113,7 +136,7 @@ config, see the "copywrite init" command.`,
 		// return a non-zero error code.
 
 		gha.StartGroup("The following files are missing headers:")
-		err := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
+		err := addlicense.Run(ignoredPatterns, useSPDX, licenseData, licenseFile, verbose, plan, []string{"."}, stdcliLogger)
 		gha.EndGroup()
 
 		cobra.CheckErr(err)
