@@ -6,7 +6,7 @@ repos:
   - repo: https://github.com/hashicorp/copywrite
     rev: v0.15.0 # Use any release tag
     hooks:
-      - id: copywrite-headers
+      - id: add-headers
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
