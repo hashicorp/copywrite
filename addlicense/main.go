@@ -361,7 +361,7 @@ func licenseHeader(path string, tmpl *template.Template, data LicenseData) ([]by
 	switch fileExtension(base) {
 	case ".c", ".h", ".gv", ".java", ".scala", ".kt", ".kts":
 		lic, err = executeTemplate(tmpl, data, "/*", " * ", " */")
-	case ".js", ".mjs", ".cjs", ".jsx", ".tsx", ".css", ".scss", ".sass", ".ts":
+	case ".js", ".mjs", ".cjs", ".jsx", ".tsx", ".css", ".scss", ".sass", ".ts", ".gjs", ".gts":
 		lic, err = executeTemplate(tmpl, data, "/**", " * ", " */")
 	case ".cc", ".cpp", ".cs", ".go", ".hh", ".hpp", ".m", ".mm", ".proto", ".rs", ".swift", ".dart", ".groovy", ".v", ".sv", ".lr":
 		lic, err = executeTemplate(tmpl, data, "", "// ", "")

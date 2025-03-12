@@ -308,7 +308,7 @@ func TestLicenseHeader(t *testing.T) {
 			"/*\n * HYS\n */\n\n",
 		},
 		{
-			[]string{"f.js", "f.mjs", "f.cjs", "f.jsx", "f.tsx", "f.css", "f.scss", "f.sass", "f.ts"},
+			[]string{"f.js", "f.mjs", "f.cjs", "f.jsx", "f.tsx", "f.css", "f.scss", "f.sass", "f.ts", "f.gjs", "f.gts"},
 			"/**\n * HYS\n */\n\n",
 		},
 		{
