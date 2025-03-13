@@ -490,7 +490,7 @@ func hasLicense(b []byte) bool {
 	}
 
 	// Default conditions
-	defaultTerms := []string{"copyright", "mozilla public", "spdx-license-identifier"}
+	defaultTerms := []string{"hashicorp, inc.", "mozilla public", "spdx-license-identifier"}
 
 	// Load conditions from config file
 	configPath := "../LicenceCopywrite.json"
