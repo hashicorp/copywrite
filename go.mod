@@ -1,6 +1,6 @@
 module github.com/hashicorp/copywrite
 
-go 1.21
+go 1.23
 
 toolchain go1.23.1
 
