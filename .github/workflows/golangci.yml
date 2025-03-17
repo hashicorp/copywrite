@@ -3,7 +3,8 @@ name: golangci
 on:
   push:
     branches:
-      - coverage-test
+      - main
+  pull_request:
 
 permissions:
   contents: read
