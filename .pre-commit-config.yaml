@@ -6,16 +6,16 @@ repos:
   - repo: https://github.com/hashicorp/copywrite
     rev: v0.15.0 # Use any release tag
     hooks:
-      - id: copywrite-headers
+      - id: check-headers
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
+    rev: v4.4.0
     hooks:
       - id: end-of-file-fixer
         exclude: ^addLicense/testdata/
       - id: trailing-whitespace
         exclude: ^addLicense/testdata/
   - repo: https://github.com/dnephin/pre-commit-golang
-    rev: v0.5.0
+    rev: v0.5.1
     hooks:
       - id: go-fmt
       - id: go-vet
