@@ -1,6 +1,6 @@
 module github.com/hashicorp/copywrite
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.1
 
@@ -20,7 +20,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	github.com/thanhpk/randstr v1.0.4
-	golang.org/x/oauth2 v0.8.0
+	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.10.0
 )
 
