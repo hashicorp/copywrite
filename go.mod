@@ -1,13 +1,13 @@
 module github.com/hashicorp/copywrite
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.1
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/bmatcuk/doublestar/v4 v4.6.0
-	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0
+	github.com/bradleyfalzon/ghinstallation/v2 v2.15.0
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/knadh/koanf v1.5.0
@@ -20,22 +20,19 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	github.com/thanhpk/randstr v1.0.4
-	golang.org/x/oauth2 v0.8.0
+	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.10.0
 )
 
 require (
-	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/cli/safeexec v1.0.0 // indirect
-	github.com/cloudflare/circl v1.3.7 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-openapi/errors v0.20.2 // indirect
 	github.com/go-openapi/strfmt v0.21.3 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-github/v53 v53.0.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
+	github.com/google/go-github/v71 v71.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
@@ -53,12 +50,9 @@ require (
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
-	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
