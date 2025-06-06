@@ -23,7 +23,7 @@ func EnsureCorrectName(filePath string) (string, error) {
 		fmt.Printf("Found improperly named file \"%s\". Renaming to \"%s\"", filePath, desiredPath)
 		err := os.Rename(filePath, filepath.Join(dir, "LICENSE"))
 		if err != nil {
-			return "", fmt.Errorf("Unable to rename file \"%s\". Full error context: %s", filePath, err)
+			return "", fmt.Errorf("unable to rename file \"%s\". Full error context: %s", filePath, err)
 		}
 	} else {
 		fmt.Printf("Validated file: %s\n", filePath)
@@ -53,7 +53,7 @@ func AddLicenseFile(dirPath string, spdxID string) (string, error) {
 	template, exists := licenseTemplate[spdxID]
 	if !exists {
 		validOptions := strings.Join(lo.Keys(licenseTemplate), ", ")
-		return "", fmt.Errorf("Failed to add license file, unknown SPDX license ID: %s. The following options are supported at this time: %s", spdxID, validOptions)
+		return "", fmt.Errorf("failed to add license file, unknown SPDX license ID: %s. The following options are supported at this time: %s", spdxID, validOptions)
 	}
 
 	destinationPath, err := filepath.Abs(filepath.Join(dirPath, "LICENSE"))

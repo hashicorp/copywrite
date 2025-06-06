@@ -58,7 +58,7 @@ func Test_New(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			for k, v := range tt.env {
-				os.Setenv(k, v)
+				_ = os.Setenv(k, v)
 				fmt.Println("Setting env var " + k + " equal to " + v)
 			}
 
@@ -66,7 +66,7 @@ func Test_New(t *testing.T) {
 			assert.Equal(t, tt.expectedOutput.isGHA, gha.isGHA)
 
 			for k := range tt.env {
-				os.Unsetenv(k)
+				_ = os.Unsetenv(k)
 			}
 		})
 	}

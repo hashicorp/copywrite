@@ -202,25 +202,25 @@ func (c *Config) LoadCommandFlags(flagSet *pflag.FlagSet, mapping map[string]str
 func (c *Config) LoadConfigFile(cfgPath string) error {
 	abs, err := filepath.Abs(cfgPath)
 	if err != nil {
-		return fmt.Errorf("Unable to determine config path: %w", err)
+		return fmt.Errorf("unable to determine config path: %w", err)
 	}
 	c.absCfgPath = abs
 
 	// If a config file exists, let's load it
 	if _, err := os.Stat(abs); err != nil {
-		return fmt.Errorf("Config file doesn't exist: %w", err)
+		return fmt.Errorf("config file doesn't exist: %w", err)
 	}
 
 	// Load HCL config.
 	err = c.globalKoanf.Load(file.Provider(abs), hcl.Parser(true))
 	if err != nil {
-		return fmt.Errorf("Unable to load config: %w", err)
+		return fmt.Errorf("unable to load config: %w", err)
 	}
 
 	// Attempt to suss out a Config struct
 	err = c.globalKoanf.Unmarshal("", &c)
 	if err != nil {
-		return fmt.Errorf("Unable to unmarshal config: %w", err)
+		return fmt.Errorf("unable to unmarshal config: %w", err)
 	}
 
 	return nil

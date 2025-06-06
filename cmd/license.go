@@ -45,7 +45,7 @@ var licenseCmd = &cobra.Command{
 
 		// Input Validation
 		if conf.Project.CopyrightYear == 0 {
-			errYearNotFound := errors.New("Unable to automatically determine copyright year. Please specify it manually in the config or via the --year flag")
+			errYearNotFound := errors.New("unable to automatically determine copyright year: Please specify it manually in the config or via the --year flag")
 
 			cliLogger.Info("Copyright year was not supplied via config or via the --year flag. Attempting to infer from the year the GitHub repo was created.")
 			repo, err := github.DiscoverRepo()
@@ -78,7 +78,7 @@ var licenseCmd = &cobra.Command{
 		var file string
 
 		if len(licenseFiles) > 1 {
-			err = fmt.Errorf("More than one license file exists. Please review the following files and manually ensure only one is present: %s", licenseFiles)
+			err = fmt.Errorf("more than one license file exists: Please review the following files and manually ensure only one is present: %s", licenseFiles)
 			cliLogger.Error(err.Error())
 			cobra.CheckErr(err)
 			return

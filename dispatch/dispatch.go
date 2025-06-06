@@ -58,11 +58,11 @@ func WaitRunFinished(client *github.Client, opts Options, run github.WorkflowRun
 		case "in_progress":
 			// Do nothing, keep watching
 		default:
-			return fmt.Errorf("Workflow \"%s\" is in unrepairable state: %s", *run.Name, *this.Status)
+			return fmt.Errorf("workflow \"%s\" is in unrepairable state: %s", *run.Name, *this.Status)
 		}
 	}
 
-	return fmt.Errorf("Timed out polling for workflow job")
+	return fmt.Errorf("timed out polling for workflow job")
 }
 
 // FindRun finds the most recent GitHub Actions run matching a given run name.
@@ -86,7 +86,7 @@ func FindRun(client *github.Client, opts Options, runName string) (github.Workfl
 		runs, _, err := client.Actions.ListWorkflowRunsByFileName(context.Background(), opts.GitHubOwner, opts.GitHubRepo, opts.WorkflowFileName, searchOpts)
 		if err != nil {
 			// TODO: handle rate limiting
-			return github.WorkflowRun{}, fmt.Errorf("Error attempting to find the \"%s\" workflow run: %w", runName, err)
+			return github.WorkflowRun{}, fmt.Errorf("error attempting to find the \"%s\" workflow run: %w", runName, err)
 		}
 
 		for _, v := range runs.WorkflowRuns {
@@ -97,7 +97,7 @@ func FindRun(client *github.Client, opts Options, runName string) (github.Workfl
 
 		time.Sleep(time.Duration(opts.SecondsBetweenPolls) * time.Second)
 	}
-	return github.WorkflowRun{}, fmt.Errorf("Timed out polling for workflow job")
+	return github.WorkflowRun{}, fmt.Errorf("timed out polling for workflow job")
 }
 
 // Worker spawns an instance of a goroutine that listens for new job requests
