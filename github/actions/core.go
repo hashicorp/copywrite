@@ -48,7 +48,7 @@ type Annotation struct {
 // ErrorNotInGHA is the error returned when a function can only
 // execute in GitHub Actions, but the current execution
 // environment is NOT GitHub Actions
-var ErrorNotInGHA = errors.New("Not in GitHub Actions")
+var ErrorNotInGHA = errors.New("not in GitHub Actions")
 
 // New returns a new GitHub Actions Writer
 func New(out io.Writer) *GHA {
@@ -76,12 +76,12 @@ func (gha *GHA) EnableGHAOutput() {
 // https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#grouping-log-lines
 func (gha *GHA) StartGroup(name string) {
 	if !gha.IsGHA() {
-		gha.println(text.Bold.Sprint(name))
+		_, _ = gha.println(text.Bold.Sprint(name))
 		return
 	}
 
 	out := "::group::" + name
-	gha.println(out)
+	_, _ = gha.println(out)
 }
 
 // EndGroup ends a GitHub Actions logging group
@@ -91,7 +91,7 @@ func (gha *GHA) EndGroup() {
 		return
 	}
 
-	gha.println("::endgroup::")
+	_, _ = gha.println("::endgroup::")
 }
 
 // SetOutput generates a GitHub Actions output for the current job
@@ -122,7 +122,7 @@ func (gha *GHA) SetJobSummary(content string) error {
 func (gha *GHA) appendToFile(fileEnvVar string, content string) error {
 	path, exists := os.LookupEnv(fileEnvVar)
 	if !gha.IsGHA() || !exists {
-		return fmt.Errorf("Unable to set modify GitHub Actions environment file %s: %w", fileEnvVar, ErrorNotInGHA)
+		return fmt.Errorf("unable to set modify GitHub Actions environment file %s: %w", fileEnvVar, ErrorNotInGHA)
 	}
 
 	// Short cut if no content is provided
@@ -141,7 +141,7 @@ func (gha *GHA) appendToFile(fileEnvVar string, content string) error {
 		return err
 	}
 
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	_, err = f.WriteString(content)
 	if err != nil {
@@ -199,10 +199,10 @@ func (gha *GHA) newAnnotation(T string, a Annotation) {
 	// "::error file={name},line={line},endLine={endLine},title={title}::{message}"
 	// "::error file=app.js,line=1,title=Syntax Error::Missing semicolon"
 	str := fmt.Sprintf("::%s %s::%s", T, strings.Join(attributes, ","), a.Message)
-	gha.println(str)
+	_, _ = gha.println(str)
 }
 
 // println is an internal helper for printing to the expected output io.Writer
-func (gha *GHA) println(i ...interface{}) {
-	fmt.Fprintln(gha.outWriter, i...)
+func (gha *GHA) println(i ...interface{}) (int, error) {
+	return fmt.Fprintln(gha.outWriter, i...)
 }
