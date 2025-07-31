@@ -21,30 +21,18 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/thanhpk/randstr v1.0.4
 	golang.org/x/oauth2 v0.30.0
-<<<<<<< HEAD
-	golang.org/x/sync v0.10.0
-=======
 	golang.org/x/sync v0.15.0
->>>>>>> upstream/main
 )
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/cli/safeexec v1.0.0 // indirect
-<<<<<<< HEAD
-=======
-	github.com/cloudflare/circl v1.6.1 // indirect
->>>>>>> upstream/main
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-openapi/errors v0.20.2 // indirect
 	github.com/go-openapi/strfmt v0.21.3 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
-<<<<<<< HEAD
 	github.com/google/go-github/v71 v71.0.0 // indirect
-=======
-	github.com/google/go-github/v53 v53.0.0 // indirect
->>>>>>> upstream/main
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
@@ -60,18 +48,10 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
-<<<<<<< HEAD
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/exp v0.0.0-20220303212507-bbda1eaf7a17 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
-=======
 	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/term v0.30.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
->>>>>>> upstream/main
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
