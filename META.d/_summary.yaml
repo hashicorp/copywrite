@@ -2,7 +2,7 @@ schema: 1.1
 partition: internal-platform
 category: tooling
 summary:
-  owner: team-productivity-systems-and-services
+  owner: team-ip-compliance
   description: |
     Utility for managing copyright headers and license files across repos
   visibility: external

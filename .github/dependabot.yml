@@ -9,7 +9,11 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "[chore] : "
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: weekly
+    commit-message:
+      prefix: "[chore] : "
