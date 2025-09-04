@@ -41,6 +41,8 @@ config, see the "copywrite init" command.`,
 		mapping := map[string]string{
 			`spdx`:             `project.license`,
 			`copyright-holder`: `project.copyright_holder`,
+			`year1`:            `project.copyright_year1`,
+			`year2`:            `project.copyright_year2`,
 		}
 
 		// update the running config with any command-line flags
@@ -91,8 +93,21 @@ config, see the "copywrite init" command.`,
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
 		// Construct the configuration addLicense needs to properly format headers
+		yearRange := ""
+		if conf.Project.CopyrightYear1 > 0 && conf.Project.CopyrightYear2 > 0 {
+			if conf.Project.CopyrightYear1 == conf.Project.CopyrightYear2 {
+				yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear1)
+			} else {
+				yearRange = fmt.Sprintf("%d, %d", conf.Project.CopyrightYear1, conf.Project.CopyrightYear2)
+			}
+		} else if conf.Project.CopyrightYear1 > 0 {
+			yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear1)
+		} else if conf.Project.CopyrightYear2 > 0 {
+			yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear2)
+		}
+
 		licenseData := addlicense.LicenseData{
-			Year:   "", // by default, we don't include a year in copyright statements
+			Year:   yearRange,
 			Holder: conf.Project.CopyrightHolder,
 			SPDXID: conf.Project.License,
 		}
@@ -129,5 +144,7 @@ func init() {
 
 	// These flags will get mapped to keys in the the global Config
 	headersCmd.Flags().StringP("spdx", "s", "", "SPDX-compliant license identifier (e.g., 'MPL-2.0')")
-	headersCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"HashiCorp, Inc.\")")
+	headersCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"IBM Corp.\")")
+	headersCmd.Flags().IntP("year1", "", 0, "Start year for copyright range (e.g., 2020)")
+	headersCmd.Flags().IntP("year2", "", 0, "End year for copyright range (e.g., 2025)")
 }
