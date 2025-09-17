@@ -50,7 +50,7 @@ type LicenseData struct {
 // optional templateFile. If templateFile is provided, the license is read
 // from the specified file. Otherwise, a template is loaded for the specified
 // license, if recognized.
-func fetchTemplate(license string, templateFile string, spdx spdxFlag) (string, error) {
+func fetchTemplate(license string, templateFile string, spdx SpdxFlag) (string, error) {
 	var t string
 	if spdx == spdxOnly {
 		t = tmplSPDX
