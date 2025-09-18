@@ -895,38 +895,114 @@ func extractYearRange(b []byte) (string, string) {
 	return "", ""
 }
 
-// buildSmartYearRange builds a year range from explicit year flags
-// Year1 and Year2 flags are always provided to the update command
+// buildSmartYearRange builds a year range from explicit year flags while preserving existing years
+// Supports selective year updates: if only year1 or year2 is provided, it merges with existing years
 func buildSmartYearRange(targetData LicenseData, existingContent []byte) string {
 	targetYear := targetData.Year
 	if targetYear == "" {
 		return ""
 	}
 
-	// Since year1 and year2 flags are always provided, use them directly
+	// Extract existing years from the file content
+	existingYear1, existingYear2 := extractExistingYears(existingContent)
+
 	// Parse the target year which comes from the flags
 	targetParts := strings.Split(targetYear, ", ")
-	var year1, year2 string
+	var newYear1, newYear2 string
 
 	if len(targetParts) == 1 {
-		// Only one year provided (year1 == year2)
-		year1 = strings.TrimSpace(targetParts[0])
-		return year1
-	} else if len(targetParts) == 2 {
-		// Two years provided
-		year1 = strings.TrimSpace(targetParts[0])
-		year2 = strings.TrimSpace(targetParts[1])
+		// Only one year provided - could be year1 only, year2 only, or both same
+		singleYear := strings.TrimSpace(targetParts[0])
 
-		// If year1 == year2, return only one year
-		if year1 == year2 {
-			return year1
+		// Check if we have existing years to determine if this is selective update
+		if existingYear1 != "" && existingYear2 != "" {
+			// File has existing year range - determine if this is year1 or year2 update
+			// Heuristic: if provided year is <= existing year1, it's updating year1
+			// if provided year > existing year1, it's updating year2
+			if singleYear <= existingYear1 {
+				// Updating year1
+				newYear1 = singleYear
+				newYear2 = existingYear2
+			} else {
+				// Updating year2
+				newYear1 = existingYear1
+				newYear2 = singleYear
+			}
+		} else if existingYear1 != "" {
+			// File has single existing year - this could be extending to a range
+			if singleYear == existingYear1 {
+				// Same year, no change needed
+				return singleYear
+			} else if singleYear < existingYear1 {
+				// New start year
+				newYear1 = singleYear
+				newYear2 = existingYear1
+			} else {
+				// New end year
+				newYear1 = existingYear1
+				newYear2 = singleYear
+			}
+		} else {
+			// No existing years, use provided year
+			return singleYear
 		}
-
-		// Return year range (year1 should always be <= year2)
-		return year1 + ", " + year2
+	} else if len(targetParts) == 2 {
+		// Two years provided - use them directly
+		newYear1 = strings.TrimSpace(targetParts[0])
+		newYear2 = strings.TrimSpace(targetParts[1])
+	} else {
+		// Invalid format, return as-is
+		return targetYear
 	}
 
-	return targetYear
+	// If year1 == year2, return only one year
+	if newYear1 == newYear2 {
+		return newYear1
+	}
+
+	// Ensure year1 <= year2
+	if newYear1 > newYear2 {
+		newYear1, newYear2 = newYear2, newYear1
+	}
+
+	// Return year range
+	return newYear1 + ", " + newYear2
+}
+
+// extractExistingYears extracts existing copyright years from file content
+func extractExistingYears(content []byte) (year1, year2 string) {
+	// Look for copyright patterns in the first 500 characters (header area)
+	n := 500
+	if len(content) < 500 {
+		n = len(content)
+	}
+
+	headerContent := string(content[:n])
+
+	// Patterns to match copyright years
+	patterns := []string{
+		`Copyright\s+(?:IBM Corp\.|HashiCorp,?\s+Inc\.?)\s+(\d{4}),?\s*(\d{4})`,         // Range: "Copyright IBM Corp. 2020, 2025"
+		`Copyright\s+(?:IBM Corp\.|HashiCorp,?\s+Inc\.?)\s+(\d{4})`,                     // Single: "Copyright IBM Corp. 2020"
+		`Copyright\s+\(c\)\s+(?:IBM Corp\.|HashiCorp,?\s+Inc\.?)\s+(\d{4}),?\s*(\d{4})`, // Range with (c)
+		`Copyright\s+\(c\)\s+(?:IBM Corp\.|HashiCorp,?\s+Inc\.?)\s+(\d{4})`,             // Single with (c)
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindStringSubmatch(headerContent)
+
+		if len(matches) >= 2 {
+			year1 = matches[1]
+			if len(matches) >= 3 && matches[2] != "" {
+				year2 = matches[2]
+			} else {
+				year2 = year1 // Single year case
+			}
+			return
+		}
+	}
+
+	return "", ""
 }
 
 // removeSPDXLines removes existing SPDX license identifier lines to prevent duplication
