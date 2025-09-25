@@ -651,7 +651,7 @@ func processFileUpdate(f *file, t *template.Template, license LicenseData, check
 }
 
 // fileNeedsUpdate reports whether the file at path needs a header update
-// (either no license header, has a HashiCorp header, or has an IBM header with different year/license info)
+// (only HashiCorp headers or IBM headers with different year/license info)
 func fileNeedsUpdate(path string) (bool, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -663,9 +663,9 @@ func fileNeedsUpdate(path string) (bool, error) {
 		return false, nil
 	}
 
-	// If no license header at all, it needs an update
+	// If no license header at all, do NOT update (removed this feature)
 	if !hasLicense(b) {
-		return true, nil
+		return false, nil
 	}
 
 	// If it has a HashiCorp header, it needs to be replaced
@@ -776,14 +776,16 @@ func hasHashiCorpHeader(b []byte) bool {
 		strings.Contains(content, "hashicorp inc.")
 }
 
-// hasIBMHeader checks if the file contains an IBM copyright header
+// hasIBMHeader checks if the file contains an IBM copyright header (both old and new formats)
 func hasIBMHeader(b []byte) bool {
 	n := 1000
 	if len(b) < 1000 {
 		n = len(b)
 	}
 	content := bytes.ToLower(b[:n])
-	return bytes.Contains(content, []byte("copyright ibm corp"))
+	// Check for both modern format "Copyright IBM Corp" and old format "Copyright (c) IBM Corp"
+	return bytes.Contains(content, []byte("copyright ibm corp")) ||
+		bytes.Contains(content, []byte("copyright (c) ibm corp"))
 }
 
 // Global variables to store the target license data for comparison
@@ -819,10 +821,11 @@ func hasIBMHeaderNeedingUpdate(b []byte) bool {
 	for _, line := range lines {
 		lowerLine := strings.ToLower(strings.TrimSpace(line))
 
-		// Look for copyright line with IBM Corp
-		if strings.Contains(lowerLine, "copyright ibm corp") {
+		// Look for copyright line with IBM Corp (both old and new formats)
+		if strings.Contains(lowerLine, "copyright ibm corp") || strings.Contains(lowerLine, "copyright (c) ibm corp") {
 			// Extract year information from the line
 			// Pattern: "Copyright IBM Corp. YEAR" or "Copyright IBM Corp. YEAR1, YEAR2"
+			// Pattern: "Copyright (c) IBM Corp. YEAR" or "Copyright (c) IBM Corp. YEAR1, YEAR2"
 			parts := strings.Fields(line)
 			for i, part := range parts {
 				if strings.ToLower(part) == "corp." && i+1 < len(parts) {
@@ -903,10 +906,58 @@ func buildSmartYearRange(targetData LicenseData, existingContent []byte) string 
 		return ""
 	}
 
+	// Check if both years were explicitly provided (even if same)
+	if strings.HasPrefix(targetYear, "EXPLICIT_BOTH:") {
+		// Extract the year and return it as single year (overriding any existing years)
+		year := strings.TrimPrefix(targetYear, "EXPLICIT_BOTH:")
+		return year
+	}
+
 	// Extract existing years from the file content
 	existingYear1, existingYear2 := extractExistingYears(existingContent)
 
-	// Parse the target year which comes from the flags
+	// Handle explicit year1 only update
+	if strings.HasPrefix(targetYear, "YEAR1_ONLY:") {
+		newYear1 := strings.TrimPrefix(targetYear, "YEAR1_ONLY:")
+		if existingYear2 != "" {
+			// File has existing year2, create range
+			if newYear1 == existingYear2 {
+				return newYear1 // Same year, return single year
+			}
+			// Ensure year1 <= year2
+			if newYear1 > existingYear2 {
+				return existingYear2 + ", " + newYear1
+			}
+			return newYear1 + ", " + existingYear2
+		} else if existingYear1 != "" {
+			// File has single existing year, replace it
+			return newYear1
+		} else {
+			// No existing years, use provided year
+			return newYear1
+		}
+	}
+
+	// Handle explicit year2 only update
+	if strings.HasPrefix(targetYear, "YEAR2_ONLY:") {
+		newYear2 := strings.TrimPrefix(targetYear, "YEAR2_ONLY:")
+		if existingYear1 != "" {
+			// File has existing year1, create range
+			if existingYear1 == newYear2 {
+				return newYear2 // Same year, return single year
+			}
+			// Ensure year1 <= year2
+			if existingYear1 > newYear2 {
+				return newYear2 + ", " + existingYear1
+			}
+			return existingYear1 + ", " + newYear2
+		} else {
+			// No existing year1, use provided year as single year
+			return newYear2
+		}
+	}
+
+	// Handle regular year range (fallback for backward compatibility)
 	targetParts := strings.Split(targetYear, ", ")
 	var newYear1, newYear2 string
 
@@ -1005,19 +1056,49 @@ func extractExistingYears(content []byte) (year1, year2 string) {
 	return "", ""
 }
 
-// removeSPDXLines removes existing SPDX license identifier lines to prevent duplication
-func removeSPDXLines(b []byte) []byte {
-	lines := bytes.Split(b, []byte("\n"))
-	var result [][]byte
+// copyrightHeaderOnly generates only a copyright header without any SPDX license identifier
+func copyrightHeaderOnly(path string, data LicenseData) ([]byte, error) {
+	base := strings.ToLower(filepath.Base(path))
+	ext := fileExtension(base)
 
-	for _, line := range lines {
-		// Skip lines containing SPDX license identifiers
-		if !bytes.Contains(bytes.ToLower(line), []byte("spdx-license-identifier")) {
-			result = append(result, line)
-		}
+	// Skip file types that we can't handle
+	if ext == "" {
+		return nil, nil
 	}
 
-	return bytes.Join(result, []byte("\n"))
+	var commentStart, commentEnd string
+	switch {
+	case ext == ".go" || ext == ".java" || ext == ".js" || ext == ".ts" || ext == ".c" || ext == ".cpp" || ext == ".h" || ext == ".hpp" || ext == ".css" || ext == ".scss" || ext == ".php" || ext == ".rs" || ext == ".swift" || ext == ".kt" || ext == ".scala" || ext == ".groovy":
+		commentStart = "//"
+	case ext == ".py" || ext == ".rb" || ext == ".sh" || ext == ".yml" || ext == ".yaml" || ext == ".toml" || ext == ".conf":
+		commentStart = "#"
+	case ext == ".html" || ext == ".xml":
+		commentStart = "<!--"
+		commentEnd = "-->"
+	case ext == ".sql":
+		commentStart = "--"
+	case ext == ".lisp" || ext == ".el":
+		commentStart = ";;"
+	case ext == ".erl":
+		commentStart = "%"
+	case ext == ".hs":
+		commentStart = "--"
+	case ext == ".ml":
+		commentStart = "(*"
+		commentEnd = "*)"
+	default:
+		return nil, nil
+	}
+
+	// Build copyright line only
+	var header string
+	if commentEnd != "" {
+		header = fmt.Sprintf("%s Copyright %s %s %s\n", commentStart, data.Holder, data.Year, commentEnd)
+	} else {
+		header = fmt.Sprintf("%s Copyright %s %s\n", commentStart, data.Holder, data.Year)
+	}
+
+	return []byte(header), nil
 }
 
 // updateLicense adds a license header to a file or replaces an existing HashiCorp/IBM header
@@ -1054,32 +1135,12 @@ func updateLicense(path string, fmode os.FileMode, tmpl *template.Template, data
 		return false, nil
 	}
 
-	// File has no copyright header (may have SPDX), add a new one
-	var lic []byte
-	lic, err = licenseHeader(path, tmpl, finalData)
-	if err != nil || lic == nil {
-		return false, err
-	}
-
-	// Remove any existing SPDX lines to avoid duplication
-	b = removeSPDXLines(b)
-
-	// Handle hashbang lines
-	line := hashBang(b, path)
-	if len(line) > 0 {
-		b = b[len(line):]
-		if line[len(line)-1] != '\n' {
-			line = append(line, '\n')
-		}
-		lic = append(line, lic...)
-	}
-
-	// Add the new license header
-	b = append(lic, b...)
-	return true, os.WriteFile(path, b, fmode)
+	// File has no copyright header - do NOT add one (removed this feature)
+	// Update command should only modify existing HashiCorp or IBM headers
+	return false, nil
 }
 
-// replaceHeaderLines does targeted replacement of copyright and SPDX lines while preserving gibberish
+// replaceHeaderLines does targeted replacement of copyright lines only, preserving SPDX and other content
 func replaceHeaderLines(content []byte, path string, data LicenseData) ([]byte, bool, error) {
 	lines := bytes.Split(content, []byte("\n"))
 	if len(lines) == 0 {
@@ -1131,17 +1192,8 @@ func replaceHeaderLines(content []byte, path string, data LicenseData) ([]byte, 
 			}
 		}
 
-		// Check if this line contains an SPDX license identifier that needs updating
-		if strings.Contains(lowerLineStr, "spdx-license-identifier") {
-			if data.SPDXID != "" {
-				newLine := surgicallyReplaceLicense(lineStr, ext, data)
-				if newLine != lineStr {
-					processedLines = append(processedLines, []byte(newLine))
-					modified = true
-					continue
-				}
-			}
-		}
+		// DO NOT MODIFY SPDX LICENSE IDENTIFIERS - preserve them as-is
+		// Keep all SPDX lines unchanged regardless of what they contain
 
 		// Keep all other lines unchanged
 		processedLines = append(processedLines, line)
@@ -1159,16 +1211,18 @@ func surgicallyReplaceCopyright(line, ext string, data LicenseData) string {
 
 	// Create regex patterns for different copyright formats - updated to match actual HashiCorp formats
 	patterns := []string{
-		// Pattern 1: "Copyright (c) 2020 HashiCorp, Inc." or "Copyright (c) IBM Corp. 2020, 2025"
+		// Pattern 1: "Copyright (c) 2020 HashiCorp, Inc."
 		`(?i)(.*?)(copyright\s*\(c\)\s*\d{4}(?:[-,]\s*\d{4})*\s+hashicorp,?\s+inc\.?)(.*?)`,
-		// Pattern 2: "Copyright (c) Hashicorp Inc. 2020" or "Copyright (c) IBM Corp. 2020, 2025"
-		`(?i)(.*?)(copyright\s*\(c\)\s*(?:hashicorp,?\s+inc\.?|ibm\s+corp\.?)(?:\s+\d{4}(?:[-,]\s*\d{4})*)?)(.*?)`,
-		// Pattern 3: "Copyright Hashicorp Inc. 2020" or "Copyright IBM Corp. 2020, 2025"
-		`(?i)(.*?)(copyright\s+(?:hashicorp,?\s+inc\.?|ibm\s+corp\.?)(?:\s+\d{4}(?:[-,]\s*\d{4})*)?)(.*?)`,
+		// Pattern 2: "Copyright (c) Hashicorp Inc. 2020"
+		`(?i)(.*?)(copyright\s*\(c\)\s*(?:hashicorp,?\s+inc\.?)(?:\s+\d{4}(?:[-,]\s*\d{4})*)?)(.*?)`,
+		// Pattern 3: "Copyright Hashicorp Inc. 2020"
+		`(?i)(.*?)(copyright\s+(?:hashicorp,?\s+inc\.?)(?:\s+\d{4}(?:[-,]\s*\d{4})*)?)(.*?)`,
 		// Pattern 4: Handle format like "Copyright (c) 2019 Hashicorp Inc."
 		`(?i)(.*?)(copyright\s*\(c\)\s*\d{4}(?:[-,]\s*\d{4})*\s+hashicorp,?\s+inc\.?)(.*?)`,
-		// Pattern 5: Handle IBM headers with years
+		// Pattern 5: Handle IBM headers with years (modern format)
 		`(?i)(.*?)(copyright\s+ibm\s+corp\.?\s+\d{4}(?:[-,]\s*\d{4})*)(.*?)`,
+		// Pattern 6: Handle old IBM headers with (c) format - "Copyright (c) IBM Corp. 2020, 2025"
+		`(?i)(.*?)(copyright\s*\(c\)\s*ibm\s+corp\.?(?:\s+\d{4}(?:[-,]\s*\d{4})*)?)(.*?)`,
 	}
 
 	for _, pattern := range patterns {
@@ -1176,25 +1230,6 @@ func surgicallyReplaceCopyright(line, ext string, data LicenseData) string {
 		if re.MatchString(line) {
 			return re.ReplaceAllString(line, "${1}"+newCopyright+"${3}")
 		}
-	}
-
-	return line
-}
-
-// surgicallyReplaceLicense replaces SPDX license identifier while preserving any additional text on the same line
-func surgicallyReplaceLicense(line, ext string, data LicenseData) string {
-	if data.SPDXID == "" {
-		return line
-	}
-
-	newLicense := fmt.Sprintf("SPDX-License-Identifier: %s", data.SPDXID)
-
-	// Pattern to match SPDX license identifier
-	pattern := `(?i)(.*?)(spdx-license-identifier:\s*[a-zA-Z0-9\.\-]+)(.*)`
-	re := regexp.MustCompile(pattern)
-
-	if re.MatchString(line) {
-		return re.ReplaceAllString(line, "${1}"+newLicense+"${3}")
 	}
 
 	return line
@@ -1215,28 +1250,6 @@ func generateCopyrightLine(ext string, data LicenseData) string {
 		return fmt.Sprintf(" %s", copyrightText)
 	default:
 		return copyrightText
-	}
-}
-
-// generateLicenseLine creates the appropriate SPDX license line for the file type
-func generateLicenseLine(ext string, data LicenseData) string {
-	if data.SPDXID == "" {
-		return ""
-	}
-
-	licenseText := fmt.Sprintf("SPDX-License-Identifier: %s", data.SPDXID)
-
-	switch ext {
-	case ".c", ".h", ".gv", ".java", ".scala", ".kt", ".kts", ".js", ".mjs", ".cjs", ".jsx", ".tsx", ".css", ".scss", ".sass", ".ts", ".gjs", ".gts":
-		return fmt.Sprintf(" * %s", licenseText)
-	case ".cc", ".cpp", ".cs", ".go", ".hh", ".hpp", ".m", ".mm", ".proto", ".rs", ".swift", ".dart", ".groovy", ".v", ".sv", ".lr":
-		return fmt.Sprintf("// %s", licenseText)
-	case ".py", ".sh", ".bash", ".zsh", ".yaml", ".yml", ".dockerfile", "dockerfile", ".rb", "gemfile", ".ru", ".tcl", ".hcl", ".tf", ".tfvars", ".nomad", ".bzl", ".pl", ".pp", ".ps1", ".psd1", ".psm1", ".txtar", ".sentinel":
-		return fmt.Sprintf("# %s", licenseText)
-	case ".html", ".htm", ".xml", ".vue", ".wxi", ".wxl", ".wxs":
-		return fmt.Sprintf(" %s", licenseText)
-	default:
-		return licenseText
 	}
 }
 

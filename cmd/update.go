@@ -92,14 +92,17 @@ config, see the "copywrite init" command.`,
 		yearRange := ""
 		if conf.Project.CopyrightYear1 > 0 && conf.Project.CopyrightYear2 > 0 {
 			if conf.Project.CopyrightYear1 == conf.Project.CopyrightYear2 {
-				yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear1)
+				// Use special marker to indicate both years were explicitly provided (even if same)
+				yearRange = fmt.Sprintf("EXPLICIT_BOTH:%d", conf.Project.CopyrightYear1)
 			} else {
 				yearRange = fmt.Sprintf("%d, %d", conf.Project.CopyrightYear1, conf.Project.CopyrightYear2)
 			}
 		} else if conf.Project.CopyrightYear1 > 0 {
-			yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear1)
+			// Mark that only year1 was provided
+			yearRange = fmt.Sprintf("YEAR1_ONLY:%d", conf.Project.CopyrightYear1)
 		} else if conf.Project.CopyrightYear2 > 0 {
-			yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear2)
+			// Mark that only year2 was provided
+			yearRange = fmt.Sprintf("YEAR2_ONLY:%d", conf.Project.CopyrightYear2)
 		}
 
 		licenseData := addlicense.LicenseData{
