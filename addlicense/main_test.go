@@ -1084,7 +1084,11 @@ package main`
 // Test updateLicense function
 func TestUpdateLicense(t *testing.T) {
 	tmp := tempDir(t)
-	defer os.RemoveAll(tmp)
+	defer func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create template
 	tmpl := template.Must(template.New("").Parse("// Copyright {{.Year}} {{.Holder}}\n// SPDX-License-Identifier: {{.SPDXID}}\n\n"))
