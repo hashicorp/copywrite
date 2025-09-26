@@ -481,7 +481,11 @@ func TestFileMatches(t *testing.T) {
 // Test RunUpdate function
 func TestRunUpdate(t *testing.T) {
 	tmp := tempDir(t)
-	defer os.RemoveAll(tmp)
+	defer func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create test files
 	hashicorpFile := filepath.Join(tmp, "hashicorp.go")
@@ -713,7 +717,11 @@ func TestHasIBMHeaderNeedingUpdate(t *testing.T) {
 // Test fileNeedsUpdate function
 func TestFileNeedsUpdate(t *testing.T) {
 	tmp := tempDir(t)
-	defer os.RemoveAll(tmp)
+	defer func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Set target license data for comparison
 	license := LicenseData{
@@ -993,7 +1001,11 @@ func TestSurgicallyReplaceCopyright(t *testing.T) {
 // Test processFileUpdate function
 func TestProcessFileUpdate(t *testing.T) {
 	tmp := tempDir(t)
-	defer os.RemoveAll(tmp)
+	defer func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
 
 	// Create logger for testing
 	logger := log.New(os.Stderr, "", log.LstdFlags)
