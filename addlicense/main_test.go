@@ -652,6 +652,26 @@ func TestHasIBMHeader(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "IBM without years or periods",
+			content:  "// Copyright IBM Corp\npackage main",
+			expected: true,
+		},
+		{
+			name:     "IBM without years with period",
+			content:  "// Copyright IBM Corp.\npackage main",
+			expected: true,
+		},
+		{
+			name:     "IBM (c) format without years",
+			content:  "// Copyright (c) IBM Corp.\npackage main",
+			expected: true,
+		},
+		{
+			name:     "IBM (c) format without years or period",
+			content:  "// Copyright (c) IBM Corp\npackage main",
+			expected: true,
+		},
+		{
 			name:     "HashiCorp header",
 			content:  "// Copyright (c) HashiCorp, Inc.\n// SPDX-License-Identifier: MPL-2.0",
 			expected: false,
@@ -985,6 +1005,34 @@ func TestSurgicallyReplaceCopyright(t *testing.T) {
 			ext:      ".c",
 			data:     hashicorpData,
 			expected: "/* Copyright HashiCorp, Inc. 2020, 2024 */",
+		},
+		{
+			name:     "IBM without years with period",
+			line:     "// Copyright IBM Corp.",
+			ext:      ".go",
+			data:     ibmData,
+			expected: "// Copyright IBM Corp. 2020, 2024",
+		},
+		{
+			name:     "IBM without years without period",
+			line:     "// Copyright IBM Corp",
+			ext:      ".go",
+			data:     ibmData,
+			expected: "// Copyright IBM Corp. 2020, 2024",
+		},
+		{
+			name:     "IBM (c) format without years with period",
+			line:     "// Copyright (c) IBM Corp.",
+			ext:      ".go",
+			data:     ibmData,
+			expected: "// Copyright IBM Corp. 2020, 2024",
+		},
+		{
+			name:     "IBM (c) format without years without period",
+			line:     "// Copyright (c) IBM Corp",
+			ext:      ".go",
+			data:     ibmData,
+			expected: "// Copyright IBM Corp. 2020, 2024",
 		},
 	}
 

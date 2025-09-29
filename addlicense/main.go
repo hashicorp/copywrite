@@ -783,9 +783,13 @@ func hasIBMHeader(b []byte) bool {
 		n = len(b)
 	}
 	content := bytes.ToLower(b[:n])
-	// Check for both modern format "Copyright IBM Corp" and old format "Copyright (c) IBM Corp"
+
+	// Check for various IBM copyright patterns:
+	// "Copyright IBM Corp", "Copyright IBM Corp.", "Copyright (c) IBM Corp", "Copyright (c) IBM Corp."
 	return bytes.Contains(content, []byte("copyright ibm corp")) ||
-		bytes.Contains(content, []byte("copyright (c) ibm corp"))
+		bytes.Contains(content, []byte("copyright (c) ibm corp")) ||
+		bytes.Contains(content, []byte("copyright ibm corp.")) ||
+		bytes.Contains(content, []byte("copyright (c) ibm corp."))
 }
 
 // Global variables to store the target license data for comparison
@@ -1144,6 +1148,10 @@ func surgicallyReplaceCopyright(line, ext string, data LicenseData) string {
 		`(?i)(.*?)(copyright\s+ibm\s+corp\.?\s+\d{4}(?:[-,]\s*\d{4})*)(.*?)`,
 		// Pattern 6: Handle old IBM headers with (c) format - "Copyright (c) IBM Corp. 2020, 2025"
 		`(?i)(.*?)(copyright\s*\(c\)\s*ibm\s+corp\.?(?:\s+\d{4}(?:[-,]\s*\d{4})*)?)(.*?)`,
+		// Pattern 7: Handle IBM headers without years - "Copyright IBM Corp." or "Copyright IBM Corp"
+		`(?i)(.*?)(copyright\s+ibm\s+corp\.?)(.*?)`,
+		// Pattern 8: Handle IBM headers with (c) but no years - "Copyright (c) IBM Corp." or "Copyright (c) IBM Corp"
+		`(?i)(.*?)(copyright\s*\(c\)\s*ibm\s+corp\.?)(.*?)`,
 	}
 
 	for _, pattern := range patterns {
