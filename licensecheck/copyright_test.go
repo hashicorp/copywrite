@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2023, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package licensecheck
@@ -14,7 +14,6 @@ func TestHasMatchingCopyright(t *testing.T) {
 	AppFs := afero.NewOsFs()
 	tempDir := t.TempDir()
 
-	desiredCopyrightString := "Copyright (c) 2022 HashiCorp, Inc."
 
 	cases := []struct {
 		description   string
@@ -32,14 +31,12 @@ func TestHasMatchingCopyright(t *testing.T) {
 		},
 		{
 			description:   "Valid copyright statement should pass",
-			fileContents:  "Copyright (c) 2022 HashiCorp, Inc.",
 			caseSensitive: false,
 			expectedValid: true,
 			expectedError: nil,
 		},
 		{
 			description:   "Valid copyright statement with language headers should pass",
-			fileContents:  "#!/bin/bash\nCopyright (c) 2022 HashiCorp, Inc.",
 			caseSensitive: false,
 			expectedValid: true,
 			expectedError: nil,
@@ -53,7 +50,6 @@ func TestHasMatchingCopyright(t *testing.T) {
 		},
 		{
 			description:   "Malformed copyright statement without year should fail",
-			fileContents:  "Copyright (c) HashiCorp, Inc.",
 			caseSensitive: false,
 			expectedValid: false,
 			expectedError: nil,
@@ -74,35 +70,30 @@ func TestHasMatchingCopyright(t *testing.T) {
 		},
 		{
 			description:   "Valid lowercase copyright statement should pass",
-			fileContents:  "copyright (c) 2022 hashicorp, inc.",
 			caseSensitive: false,
 			expectedValid: true,
 			expectedError: nil,
 		},
 		{
 			description:   "valid uppercase copyright statement should pass",
-			fileContents:  "COPYRIGHT (C) 2022 HASHICORP, INC.",
 			caseSensitive: false,
 			expectedValid: true,
 			expectedError: nil,
 		},
 		{
 			description:   "Valid lowercase copyright statement with case sensitivity on should fail",
-			fileContents:  "copyright (c) 2022 hashicorp, inc.",
 			caseSensitive: true,
 			expectedValid: false,
 			expectedError: nil,
 		},
 		{
 			description:   "valid uppercase copyright statement with case sensitivity on should fail",
-			fileContents:  "COPYRIGHT (C) 2022 HASHICORP, INC.",
 			caseSensitive: true,
 			expectedValid: false,
 			expectedError: nil,
 		},
 		{
 			description: "valid copyright statement on document that has the copyright word elsewhere should pass",
-			fileContents: `Copyright (c) 2022 HashiCorp, Inc.
 
 			Apache License
 			Version 2.0, January 2004
@@ -179,13 +170,11 @@ func TestHasCopyright(t *testing.T) {
 		},
 		{
 			description:   "Valid copyright statement should pass",
-			fileContents:  "Copyright (c) 2022 HashiCorp, Inc.",
 			expectedValid: true,
 			expectedError: nil,
 		},
 		{
 			description:   "Valid copyright statement with language headers should pass",
-			fileContents:  "#!/bin/bash\nCopyright (c) 2022 HashiCorp, Inc.",
 			expectedValid: true,
 			expectedError: nil,
 		},
@@ -197,7 +186,6 @@ func TestHasCopyright(t *testing.T) {
 		},
 		{
 			description:   "Malformed copyright statement without year should pass",
-			fileContents:  "Copyright (c) HashiCorp, Inc.",
 			expectedValid: true,
 			expectedError: nil,
 		},
@@ -227,7 +215,6 @@ func TestHasCopyright(t *testing.T) {
 		},
 		{
 			description: "valid copyright statement on document that has the copyright word elsewhere should pass",
-			fileContents: `Copyright (c) 2022 HashiCorp, Inc.
 
 			Apache License
 			Version 2.0, January 2004
