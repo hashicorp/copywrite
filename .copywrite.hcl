@@ -9,6 +9,7 @@ project {
   # files or folders should be ignored
   header_ignore = [
     "**/testdata/**",
+    "licensecheck/copyright_test.go",
 
     # Forked and modified project
     "addlicense/**",
