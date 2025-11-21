@@ -27,6 +27,8 @@ func init() {
 	template.Must(template.New("").Parse(tmplMIT))
 	template.Must(template.New("").Parse(tmplBSD))
 	template.Must(template.New("").Parse(tmplMPL))
+	template.Must(template.New("").Parse(tmplSPDX))
+	template.Must(template.New("").Parse(tmplCopyrightOnly))
 }
 
 func TestFetchTemplate(t *testing.T) {
@@ -124,6 +126,14 @@ func TestFetchTemplate(t *testing.T) {
 			tmplSPDX,
 			nil,
 		},
+		{
+			"copyright-only template for unknown license",
+			"unknown",
+			"",
+			spdxOff,
+			tmplCopyrightOnly,
+			nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -177,6 +187,58 @@ func TestExecuteTemplate(t *testing.T) {
 			LicenseData{Holder: "A&Z"},
 			"", "", "",
 			"A&Z\n\n",
+		},
+
+		// Test tmplSPDX template execution
+		{
+			tmplSPDX,
+			LicenseData{Holder: "HashiCorp, Inc.", Year: "2023", SPDXID: "MPL-2.0"},
+			"", "", "",
+			"Copyright HashiCorp, Inc. 2023\nSPDX-License-Identifier: MPL-2.0\n\n",
+		},
+		{
+			tmplSPDX,
+			LicenseData{Holder: "IBM Corp.", Year: "2020, 2023", SPDXID: "Apache-2.0"},
+			"", "", "",
+			"Copyright IBM Corp. 2020, 2023\nSPDX-License-Identifier: Apache-2.0\n\n",
+		},
+		{
+			tmplSPDX,
+			LicenseData{Year: "2023", SPDXID: "MIT"},
+			"", "", "",
+			"Copyright 2023\nSPDX-License-Identifier: MIT\n\n",
+		},
+
+		// Test tmplCopyrightOnly template execution
+		{
+			tmplCopyrightOnly,
+			LicenseData{Holder: "HashiCorp, Inc.", Year: "2023"},
+			"", "", "",
+			"Copyright HashiCorp, Inc. 2023\n\n",
+		},
+		{
+			tmplCopyrightOnly,
+			LicenseData{Holder: "IBM Corp.", Year: "2020, 2023"},
+			"", "", "",
+			"Copyright IBM Corp. 2020, 2023\n\n",
+		},
+		{
+			tmplCopyrightOnly,
+			LicenseData{Year: "2023"},
+			"", "", "",
+			"Copyright 2023\n\n",
+		},
+		{
+			tmplCopyrightOnly,
+			LicenseData{Holder: "Some Corp."},
+			"", "", "",
+			"Copyright Some Corp.\n\n",
+		},
+		{
+			tmplCopyrightOnly,
+			LicenseData{},
+			"", "", "",
+			"Copyright\n\n",
 		},
 	}
 
