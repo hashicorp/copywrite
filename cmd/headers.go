@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/hashicorp/copywrite/addlicense"
 	"github.com/hashicorp/go-hclog"
@@ -41,6 +42,7 @@ config, see the "copywrite init" command.`,
 		mapping := map[string]string{
 			`spdx`:             `project.license`,
 			`copyright-holder`: `project.copyright_holder`,
+			`copyright-year`:   `project.copyright_year`,
 		}
 
 		// update the running config with any command-line flags
@@ -91,8 +93,12 @@ config, see the "copywrite init" command.`,
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
 		// Construct the configuration addLicense needs to properly format headers
+		var yearStr string
+		if conf.Project.CopyrightYear > 0 {
+			yearStr = strconv.Itoa(conf.Project.CopyrightYear)
+		}
 		licenseData := addlicense.LicenseData{
-			Year:   "", // by default, we don't include a year in copyright statements
+			Year:   yearStr,
 			Holder: conf.Project.CopyrightHolder,
 			SPDXID: conf.Project.License,
 		}
@@ -130,4 +136,5 @@ func init() {
 	// These flags will get mapped to keys in the the global Config
 	headersCmd.Flags().StringP("spdx", "s", "", "SPDX-compliant license identifier (e.g., 'MPL-2.0')")
 	headersCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"HashiCorp, Inc.\")")
+	headersCmd.Flags().IntP("copyright-year", "y", 0, "Copyright year (default: 0 (empty))")
 }
