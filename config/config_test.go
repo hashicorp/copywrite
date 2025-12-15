@@ -26,17 +26,19 @@ func Test_New(t *testing.T) {
 
 		// Validate the default value(s)
 		assert.Equal(t, 1, actualOutput.SchemaVersion, "Schema Version defaults to 1")
-		assert.Equal(t, "HashiCorp, Inc.", actualOutput.Project.CopyrightHolder, "Copyright Holder defaults to 'HashiCorp, Inc.'")
-		assert.Equal(t, "project.copyright_holder -> HashiCorp, Inc.\nschema_version -> 1\n", actualOutput.Sprint(), "Koanf object gets updated appropriately with defaults")
+		assert.Equal(t, "IBM Corp.", actualOutput.Project.CopyrightHolder, "Copyright Holder defaults to 'IBM Corp.'")
+		assert.Equal(t, "project.copyright_holder -> IBM Corp.\nschema_version -> 1\n", actualOutput.Sprint(), "Koanf object gets updated appropriately with defaults")
 	})
 }
 
 func Test_LoadConfMap(t *testing.T) {
 	mp := map[string]interface{}{
-		"schema_version":         12,
-		"project.copyright_year": 9001,
-		"project.license":        "MPL-2.0",
-		"dispatch.ignored_repos": []string{"foo", "bar"},
+		"schema_version":          12,
+		"project.copyright_year":  9001,
+		"project.copyright_year1": 6001,
+		"project.copyright_year2": 7001,
+		"project.license":         "MPL-2.0",
+		"dispatch.ignored_repos":  []string{"foo", "bar"},
 	}
 
 	// update the running config with any command-line flags
@@ -48,8 +50,10 @@ func Test_LoadConfMap(t *testing.T) {
 		globalKoanf:   koanf.New(delim),
 		SchemaVersion: 12,
 		Project: Project{
-			CopyrightHolder: "HashiCorp, Inc.",
+			CopyrightHolder: "IBM Corp.",
 			CopyrightYear:   9001,
+			CopyrightYear1:  6001,
+			CopyrightYear2:  7001,
 			License:         "MPL-2.0",
 		},
 		Dispatch: Dispatch{
@@ -76,6 +80,8 @@ func Test_LoadCommandFlags(t *testing.T) {
 		`schemaVersion`: `schema_version`,
 		`spdx`:          `project.license`,
 		`year`:          `project.copyright_year`,
+		`year1`:         `project.copyright_year1`,
+		`year2`:         `project.copyright_year2`,
 		`ignoredRepos`:  `dispatch.ignored_repos`,
 	}
 
@@ -92,8 +98,10 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 1,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
+					CopyrightYear1:  6001,
+					CopyrightYear2:  7001,
 					License:         "MPL-2.0",
 				},
 				Dispatch: Dispatch{
@@ -108,8 +116,10 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 12,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
+					CopyrightYear1:  6001,
+					CopyrightYear2:  7001,
 					License:         "MPL-2.0",
 				},
 				Dispatch: Dispatch{
@@ -124,8 +134,10 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 33,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
+					CopyrightYear1:  6001,
+					CopyrightYear2:  7001,
 					License:         "MPL-2.0",
 				},
 				Dispatch: Dispatch{
@@ -140,8 +152,10 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 33,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
+					CopyrightYear1:  6001,
+					CopyrightYear2:  7001,
 					License:         "MPL-2.0",
 				},
 				Dispatch: Dispatch{
@@ -157,6 +171,8 @@ func Test_LoadCommandFlags(t *testing.T) {
 			flags.Int("schemaVersion", 12, "Config Schema Version")
 			flags.String("spdx", "MPL-2.0", "SPDX License Identifier")
 			flags.Int("year", 9001, "Year of copyright")
+			flags.Int("year1", 6001, "First year of copyright")
+			flags.Int("year2", 7001, "Second year of copyright")
 			flags.StringArray("ignoredRepos", []string{"foo", "bar"}, "repos to ignore")
 			err := flags.Parse(tt.args)
 			assert.Nil(t, err, "If this broke, the test is wrong, not the function under test")
@@ -211,7 +227,9 @@ func Test_LoadConfigFile(t *testing.T) {
 			inputCfgPath: "testdata/project/copyright_year_only.hcl",
 			expectedOutput: &Config{
 				Project: Project{
-					CopyrightYear: 9001,
+					CopyrightYear:  9001,
+					CopyrightYear1: 6001,
+					CopyrightYear2: 7001,
 				},
 			},
 		},
@@ -229,8 +247,10 @@ func Test_LoadConfigFile(t *testing.T) {
 			inputCfgPath: "testdata/project/partial_project.hcl",
 			expectedOutput: &Config{
 				Project: Project{
-					CopyrightYear: 9001,
-					License:       "NOT_A_VALID_SPDX",
+					CopyrightYear:  9001,
+					CopyrightYear1: 6001,
+					CopyrightYear2: 7001,
+					License:        "NOT_A_VALID_SPDX",
 				},
 			},
 		},
@@ -241,6 +261,8 @@ func Test_LoadConfigFile(t *testing.T) {
 				SchemaVersion: 12,
 				Project: Project{
 					CopyrightYear:   9001,
+					CopyrightYear1:  6001,
+					CopyrightYear2:  7001,
 					CopyrightHolder: "Dummy Corporation",
 					License:         "NOT_A_VALID_SPDX",
 					HeaderIgnore: []string{
@@ -316,6 +338,8 @@ func Test_Sprint(t *testing.T) {
 			expectedOutput: strings.Join([]string{
 				"project.copyright_holder -> Dummy Corporation",
 				"project.copyright_year -> 9001",
+				"project.copyright_year1 -> 6001",
+				"project.copyright_year2 -> 7001",
 				"project.header_ignore -> [asdf.go *.css **/vendor/**.go]",
 				"project.license -> NOT_A_VALID_SPDX",
 				"project.upstream -> hashicorp/super-secret-private-repo",

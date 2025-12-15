@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strconv"
 
 	"github.com/hashicorp/copywrite/github"
 	"github.com/hashicorp/copywrite/licensecheck"
@@ -35,6 +34,8 @@ var licenseCmd = &cobra.Command{
 		mapping := map[string]string{
 			`spdx`:             `project.license`,
 			`year`:             `project.copyright_year`,
+			`year1`:            `project.copyright_year1`,
+			`year2`:            `project.copyright_year2`,
 			`copyright-holder`: `project.copyright_holder`,
 		}
 
@@ -44,10 +45,13 @@ var licenseCmd = &cobra.Command{
 		cobra.CheckErr(err)
 
 		// Input Validation
-		if conf.Project.CopyrightYear == 0 {
-			errYearNotFound := errors.New("unable to automatically determine copyright year: Please specify it manually in the config or via the --year flag")
+		// Check if we have year information from new year1/year2 flags or legacy year flag
+		hasYearInfo := conf.Project.CopyrightYear > 0 || conf.Project.CopyrightYear1 > 0 || conf.Project.CopyrightYear2 > 0
 
-			cliLogger.Info("Copyright year was not supplied via config or via the --year flag. Attempting to infer from the year the GitHub repo was created.")
+		if !hasYearInfo {
+			errYearNotFound := errors.New("unable to automatically determine copyright year: Please specify it manually in the config or via the --year, --year1, or --year2 flag")
+
+			cliLogger.Info("Copyright year was not supplied via config or via the --year/--year1/--year2 flags. Attempting to infer from the year the GitHub repo was created.")
 			repo, err := github.DiscoverRepo()
 			if err != nil {
 				cobra.CheckErr(fmt.Errorf("%v: %w", errYearNotFound, err))
@@ -64,10 +68,36 @@ var licenseCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		cmd.Printf("Licensing under the following terms: %s\n", conf.Project.License)
-		cmd.Printf("Using year of initial copyright: %v\n", conf.Project.CopyrightYear)
+
+		// Construct the year range similar to headers command
+		yearRange := ""
+		if conf.Project.CopyrightYear1 > 0 && conf.Project.CopyrightYear2 > 0 {
+			if conf.Project.CopyrightYear1 == conf.Project.CopyrightYear2 {
+				yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear1)
+			} else {
+				yearRange = fmt.Sprintf("%d, %d", conf.Project.CopyrightYear1, conf.Project.CopyrightYear2)
+			}
+		} else if conf.Project.CopyrightYear1 > 0 {
+			yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear1)
+		} else if conf.Project.CopyrightYear2 > 0 {
+			yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear2)
+		} else if conf.Project.CopyrightYear > 0 {
+			// Fallback to legacy single year for backward compatibility
+			yearRange = fmt.Sprintf("%d", conf.Project.CopyrightYear)
+		}
+
+		if yearRange != "" {
+			cmd.Printf("Using year of initial copyright: %v\n", yearRange)
+		}
 		cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
 
-		copyright := "Copyright (c) " + strconv.Itoa(conf.Project.CopyrightYear) + " " + conf.Project.CopyrightHolder
+		// Use the same format as headers command: "Copyright [HOLDER] [YEAR_RANGE]"
+		var copyright string
+		if yearRange != "" {
+			copyright = "Copyright " + conf.Project.CopyrightHolder + " " + yearRange
+		} else {
+			copyright = "Copyright " + conf.Project.CopyrightHolder
+		}
 
 		licenseFiles, err := licensecheck.FindLicenseFiles(dirPath)
 		if err != nil {
@@ -173,6 +203,8 @@ func init() {
 	// These flags will get mapped to keys in the the global Config
 	// TODO: eventually, the copyrightYear should be dynamically inferred from the repo
 	licenseCmd.Flags().IntP("year", "y", 0, "Year that the copyright statement should include")
+	licenseCmd.Flags().IntP("year1", "", 0, "Start year for copyright range (e.g., 2020)")
+	licenseCmd.Flags().IntP("year2", "", 0, "End year for copyright range (e.g., 2025)")
 	licenseCmd.Flags().StringP("spdx", "s", "", "SPDX License Identifier indicating what the LICENSE file should represent")
-	licenseCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"HashiCorp, Inc.\")")
+	licenseCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"IBM Corp.\")")
 }

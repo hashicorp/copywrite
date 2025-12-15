@@ -26,6 +26,8 @@ var (
 // a specific project/repo
 type Project struct {
 	CopyrightYear   int      `koanf:"copyright_year"`
+	CopyrightYear1  int      `koanf:"copyright_year1"`
+	CopyrightYear2  int      `koanf:"copyright_year2"`
 	CopyrightHolder string   `koanf:"copyright_holder"`
 	HeaderIgnore    []string `koanf:"header_ignore"`
 	License         string   `koanf:"license"`
@@ -88,7 +90,7 @@ func New() (*Config, error) {
 	// Preload default config values
 	defaults := map[string]interface{}{
 		"schema_version":           1,
-		"project.copyright_holder": "HashiCorp, Inc.",
+		"project.copyright_holder": "IBM Corp.",
 	}
 	err := c.LoadConfMap(defaults)
 	if err != nil {
