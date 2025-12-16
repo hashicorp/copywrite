@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"strconv"
 
 	"github.com/hashicorp/copywrite/github"
 	"github.com/hashicorp/copywrite/licensecheck"
@@ -64,10 +63,10 @@ var licenseCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		cmd.Printf("Licensing under the following terms: %s\n", conf.Project.License)
-		cmd.Printf("Using year of initial copyright: %v\n", conf.Project.CopyrightYear)
+		cmd.Printf("Using copyright years: %v\n", conf.FormatCopyrightYears())
 		cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
 
-		copyright := "Copyright (c) " + strconv.Itoa(conf.Project.CopyrightYear) + " " + conf.Project.CopyrightHolder
+		copyright := "Copyright " + conf.FormatCopyrightYears() + " " + conf.Project.CopyrightHolder
 
 		licenseFiles, err := licensecheck.FindLicenseFiles(dirPath)
 		if err != nil {
@@ -174,5 +173,5 @@ func init() {
 	// TODO: eventually, the copyrightYear should be dynamically inferred from the repo
 	licenseCmd.Flags().IntP("year", "y", 0, "Year that the copyright statement should include")
 	licenseCmd.Flags().StringP("spdx", "s", "", "SPDX License Identifier indicating what the LICENSE file should represent")
-	licenseCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"HashiCorp, Inc.\")")
+	licenseCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"IBM Corp.\")")
 }
