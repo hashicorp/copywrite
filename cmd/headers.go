@@ -92,7 +92,7 @@ config, see the "copywrite init" command.`,
 
 		// Construct the configuration addLicense needs to properly format headers
 		licenseData := addlicense.LicenseData{
-			Year:   "", // by default, we don't include a year in copyright statements
+			Year:   conf.FormatCopyrightYears(), // Format year(s) for copyright statements
 			Holder: conf.Project.CopyrightHolder,
 			SPDXID: conf.Project.License,
 		}
@@ -129,5 +129,5 @@ func init() {
 
 	// These flags will get mapped to keys in the the global Config
 	headersCmd.Flags().StringP("spdx", "s", "", "SPDX-compliant license identifier (e.g., 'MPL-2.0')")
-	headersCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"HashiCorp, Inc.\")")
+	headersCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"IBM Corp.\")")
 }

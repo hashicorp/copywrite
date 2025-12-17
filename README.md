@@ -94,10 +94,14 @@ project {
   license = "MPL-2.0"
 
   # (OPTIONAL) Represents the copyright holder used in all statements
-  # Default: HashiCorp, Inc.
+  # Default: IBM Corp.
   # copyright_holder = ""
 
   # (OPTIONAL) Represents the year that the project initially began
+  # This is used as the starting year in copyright statements
+  # If set and different from current year, headers will show: "copyright_year, current_year"
+  # If set and same as current year, headers will show: "current_year"
+  # If not set (0), it will be auto-detected from GitHub or use current year only
   # Default: <the year the repo was first created>
   # copyright_year = 0
 

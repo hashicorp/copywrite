@@ -4,9 +4,12 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/knadh/koanf"
 	"github.com/spf13/pflag"
@@ -26,8 +29,8 @@ func Test_New(t *testing.T) {
 
 		// Validate the default value(s)
 		assert.Equal(t, 1, actualOutput.SchemaVersion, "Schema Version defaults to 1")
-		assert.Equal(t, "HashiCorp, Inc.", actualOutput.Project.CopyrightHolder, "Copyright Holder defaults to 'HashiCorp, Inc.'")
-		assert.Equal(t, "project.copyright_holder -> HashiCorp, Inc.\nschema_version -> 1\n", actualOutput.Sprint(), "Koanf object gets updated appropriately with defaults")
+		assert.Equal(t, "IBM Corp.", actualOutput.Project.CopyrightHolder, "Copyright Holder defaults to 'IBM Corp.'")
+		assert.Equal(t, "project.copyright_holder -> IBM Corp.\nschema_version -> 1\n", actualOutput.Sprint(), "Koanf object gets updated appropriately with defaults")
 	})
 }
 
@@ -48,7 +51,7 @@ func Test_LoadConfMap(t *testing.T) {
 		globalKoanf:   koanf.New(delim),
 		SchemaVersion: 12,
 		Project: Project{
-			CopyrightHolder: "HashiCorp, Inc.",
+			CopyrightHolder: "IBM Corp.",
 			CopyrightYear:   9001,
 			License:         "MPL-2.0",
 		},
@@ -73,10 +76,11 @@ func Test_LoadConfMap(t *testing.T) {
 func Test_LoadCommandFlags(t *testing.T) {
 	// Map command flags to config keys
 	mapping := map[string]string{
-		`schemaVersion`: `schema_version`,
-		`spdx`:          `project.license`,
-		`year`:          `project.copyright_year`,
-		`ignoredRepos`:  `dispatch.ignored_repos`,
+		`schemaVersion`:   `schema_version`,
+		`spdx`:            `project.license`,
+		`year`:            `project.copyright_year`,
+		`copyrightHolder`: `project.copyright_holder`,
+		`ignoredRepos`:    `dispatch.ignored_repos`,
 	}
 
 	tests := []struct {
@@ -92,7 +96,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 1,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
 					License:         "MPL-2.0",
 				},
@@ -108,7 +112,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 12,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
 					License:         "MPL-2.0",
 				},
@@ -124,7 +128,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 33,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
 					License:         "MPL-2.0",
 				},
@@ -140,7 +144,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 33,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
 					License:         "MPL-2.0",
 				},
@@ -157,6 +161,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			flags.Int("schemaVersion", 12, "Config Schema Version")
 			flags.String("spdx", "MPL-2.0", "SPDX License Identifier")
 			flags.Int("year", 9001, "Year of copyright")
+			flags.String("copyrightHolder", "IBM Corp.", "Copyright Holder")
 			flags.StringArray("ignoredRepos", []string{"foo", "bar"}, "repos to ignore")
 			err := flags.Parse(tt.args)
 			assert.Nil(t, err, "If this broke, the test is wrong, not the function under test")
@@ -366,4 +371,46 @@ func Test_GetConfigPath(t *testing.T) {
 
 	abs, _ := filepath.Abs(cfgPath)
 	assert.Equal(t, abs, actualOutput.GetConfigPath(), "Loaded config should return abs file path")
+}
+
+func Test_FormatCopyrightYears(t *testing.T) {
+	currentYear := time.Now().Year()
+
+	tests := []struct {
+		description    string
+		copyrightYear  int
+		expectedOutput string
+	}{
+		{
+			description:    "No copyright year set (0) should return current year only",
+			copyrightYear:  0,
+			expectedOutput: strconv.Itoa(currentYear),
+		},
+		{
+			description:    "Copyright year equals current year should return single year",
+			copyrightYear:  currentYear,
+			expectedOutput: strconv.Itoa(currentYear),
+		},
+		{
+			description:    "Copyright year before current year should return year range",
+			copyrightYear:  2023,
+			expectedOutput: fmt.Sprintf("2023, %d", currentYear),
+		},
+		{
+			description:    "Old copyright year should return year range",
+			copyrightYear:  2018,
+			expectedOutput: fmt.Sprintf("2018, %d", currentYear),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			c := MustNew()
+			c.Project.CopyrightYear = tt.copyrightYear
+
+			actualOutput := c.FormatCopyrightYears()
+
+			assert.Equal(t, tt.expectedOutput, actualOutput, tt.description)
+		})
+	}
 }

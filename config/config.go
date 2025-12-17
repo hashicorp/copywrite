@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/hcl"
@@ -88,7 +90,7 @@ func New() (*Config, error) {
 	// Preload default config values
 	defaults := map[string]interface{}{
 		"schema_version":           1,
-		"project.copyright_holder": "HashiCorp, Inc.",
+		"project.copyright_holder": "IBM Corp.",
 	}
 	err := c.LoadConfMap(defaults)
 	if err != nil {
@@ -236,4 +238,24 @@ func (c *Config) Sprint() string {
 // If LoadConfigFile() has not been called, it will return an empty string.
 func (c *Config) GetConfigPath() string {
 	return c.absCfgPath
+}
+
+// FormatCopyrightYears returns a formatted year string for copyright statements.
+// If copyrightYear is 0 or equals current year, returns current year only.
+// Otherwise returns "copyrightYear, currentYear" format (e.g., "2023, 2025").
+func (c *Config) FormatCopyrightYears() string {
+	currentYear := time.Now().Year()
+
+	// If no copyright year is set, use current year only
+	if c.Project.CopyrightYear == 0 {
+		return strconv.Itoa(currentYear)
+	}
+
+	// If copyright year equals current year, return single year
+	if c.Project.CopyrightYear == currentYear {
+		return strconv.Itoa(currentYear)
+	}
+
+	// Return year range: "startYear, currentYear"
+	return fmt.Sprintf("%d, %d", c.Project.CopyrightYear, currentYear)
 }
