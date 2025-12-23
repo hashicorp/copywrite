@@ -5,6 +5,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -382,11 +383,6 @@ func Test_FormatCopyrightYears(t *testing.T) {
 		expectedOutput string
 	}{
 		{
-			description:    "No copyright year set (0) should return current year only",
-			copyrightYear:  0,
-			expectedOutput: strconv.Itoa(currentYear),
-		},
-		{
 			description:    "Copyright year equals current year should return single year",
 			copyrightYear:  currentYear,
 			expectedOutput: strconv.Itoa(currentYear),
@@ -413,4 +409,53 @@ func Test_FormatCopyrightYears(t *testing.T) {
 			assert.Equal(t, tt.expectedOutput, actualOutput, tt.description)
 		})
 	}
+}
+
+func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
+	currentYear := time.Now().Year()
+
+	t.Run("Auto-detect from git when copyright_year not set", func(t *testing.T) {
+		c := MustNew()
+		c.Project.CopyrightYear = 0
+
+		// Set config path to this repo's directory for git detection
+		c.absCfgPath = filepath.Join(getCurrentDir(t), ".copywrite.hcl")
+
+		actualOutput := c.FormatCopyrightYears()
+
+		// Should auto-detect and return a year range (this repo was created before 2025)
+		// The format should be "YYYY, currentYear" where YYYY < currentYear
+		assert.Contains(t, actualOutput, ",", "Should contain year range when auto-detected from git")
+		assert.Contains(t, actualOutput, strconv.Itoa(currentYear), "Should contain current year")
+
+		// Parse and validate the detected year
+		parts := strings.Split(actualOutput, ", ")
+		if len(parts) == 2 {
+			detectedYear, err := strconv.Atoi(parts[0])
+			assert.Nil(t, err, "First part should be a valid year")
+			assert.True(t, detectedYear >= 2020 && detectedYear <= currentYear,
+				"Detected year should be reasonable (between 2020 and current year)")
+		}
+	})
+
+	t.Run("Fallback to current year when git not available", func(t *testing.T) {
+		c := MustNew()
+		c.Project.CopyrightYear = 0
+
+		// Set config path to non-existent directory (git will fail)
+		c.absCfgPath = "/nonexistent/path/.copywrite.hcl"
+
+		actualOutput := c.FormatCopyrightYears()
+
+		// Should fallback to current year only
+		assert.Equal(t, strconv.Itoa(currentYear), actualOutput,
+			"Should fallback to current year when git detection fails")
+	})
+}
+
+// Helper function to get current directory
+func getCurrentDir(t *testing.T) string {
+	dir, err := os.Getwd()
+	assert.Nil(t, err, "Should be able to get current directory")
+	return dir
 }
