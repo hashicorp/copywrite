@@ -248,32 +248,32 @@ func (c *Config) detectFirstCommitYear() int {
 	// Try to get the year of the first commit
 	cmd := exec.Command("git", "log", "--reverse", "--format=%ad", "--date=format:%Y")
 	cmd.Dir = filepath.Dir(c.absCfgPath)
-	
+
 	// If no config path set, use current directory
 	if c.absCfgPath == "" {
 		if wd, err := os.Getwd(); err == nil {
 			cmd.Dir = wd
 		}
 	}
-	
+
 	output, err := cmd.Output()
 	if err != nil {
 		// Git command failed (not a git repo, git not installed, etc.)
 		return 0
 	}
-	
+
 	// Parse the first line (first commit year)
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 	if len(lines) == 0 || lines[0] == "" {
 		return 0
 	}
-	
+
 	year, err := strconv.Atoi(strings.TrimSpace(lines[0]))
 	if err != nil || year < 1970 || year > time.Now().Year() {
 		// Invalid year
 		return 0
 	}
-	
+
 	return year
 }
 

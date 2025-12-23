@@ -417,7 +417,7 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 	t.Run("Auto-detect from git when copyright_year not set", func(t *testing.T) {
 		c := MustNew()
 		c.Project.CopyrightYear = 0
-		
+
 		// Set config path to this repo's directory for git detection
 		c.absCfgPath = filepath.Join(getCurrentDir(t), ".copywrite.hcl")
 
@@ -427,13 +427,13 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 		// The format should be "YYYY, currentYear" where YYYY < currentYear
 		assert.Contains(t, actualOutput, ",", "Should contain year range when auto-detected from git")
 		assert.Contains(t, actualOutput, strconv.Itoa(currentYear), "Should contain current year")
-		
+
 		// Parse and validate the detected year
 		parts := strings.Split(actualOutput, ", ")
 		if len(parts) == 2 {
 			detectedYear, err := strconv.Atoi(parts[0])
 			assert.Nil(t, err, "First part should be a valid year")
-			assert.True(t, detectedYear >= 2020 && detectedYear <= currentYear, 
+			assert.True(t, detectedYear >= 2020 && detectedYear <= currentYear,
 				"Detected year should be reasonable (between 2020 and current year)")
 		}
 	})
@@ -441,14 +441,14 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 	t.Run("Fallback to current year when git not available", func(t *testing.T) {
 		c := MustNew()
 		c.Project.CopyrightYear = 0
-		
+
 		// Set config path to non-existent directory (git will fail)
 		c.absCfgPath = "/nonexistent/path/.copywrite.hcl"
 
 		actualOutput := c.FormatCopyrightYears()
 
 		// Should fallback to current year only
-		assert.Equal(t, strconv.Itoa(currentYear), actualOutput, 
+		assert.Equal(t, strconv.Itoa(currentYear), actualOutput,
 			"Should fallback to current year when git detection fails")
 	})
 }
@@ -459,4 +459,3 @@ func getCurrentDir(t *testing.T) string {
 	assert.Nil(t, err, "Should be able to get current directory")
 	return dir
 }
-
