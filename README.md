@@ -101,8 +101,9 @@ project {
   # This is used as the starting year in copyright statements
   # If set and different from current year, headers will show: "copyright_year, current_year"
   # If set and same as current year, headers will show: "current_year"
-  # If not set (0), it will be auto-detected from GitHub or use current year only
-  # Default: <the year the repo was first created>
+  # If not set (0), the tool will auto-detect from git history (first commit year)
+  # If auto-detection fails, it will fallback to current year only
+  # Default: 0 (auto-detect)
   # copyright_year = 0
 
   # (OPTIONAL) A list of globs that should not have copyright or license headers .
