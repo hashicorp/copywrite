@@ -6,8 +6,13 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
+	"time"
 
+	"github.com/hashicorp/copywrite/addlicense"
+	"github.com/hashicorp/copywrite/config"
 	"github.com/hashicorp/copywrite/github"
 	"github.com/hashicorp/copywrite/licensecheck"
 	"github.com/spf13/cobra"
@@ -65,8 +70,6 @@ var licenseCmd = &cobra.Command{
 		cmd.Printf("Licensing under the following terms: %s\n", conf.Project.License)
 		cmd.Printf("Using copyright years: %v\n", conf.FormatCopyrightYears())
 		cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
-
-		copyright := "Copyright " + conf.Project.CopyrightHolder + " " + conf.FormatCopyrightYears()
 
 		licenseFiles, err := licensecheck.FindLicenseFiles(dirPath)
 		if err != nil {
@@ -133,7 +136,10 @@ var licenseCmd = &cobra.Command{
 		}
 		cobra.CheckErr(err)
 
-		hasValidCopyright, err := licensecheck.HasMatchingCopyright(file, copyright, true)
+		// Determine expected copyright based on whether an IBM copyright already exists
+		expectedCopyright := buildExpectedCopyright(file, hasCopyright, conf)
+
+		hasValidCopyright, err := licensecheck.HasMatchingCopyright(file, expectedCopyright, true)
 		if err != nil {
 			cliLogger.Error("Problem matching copyright", err)
 		}
@@ -143,7 +149,7 @@ var licenseCmd = &cobra.Command{
 			if hasValidCopyright {
 				cmd.Println("Copyright statement is valid!")
 			} else {
-				err = fmt.Errorf("license file has a copyright statement, but it is malformed; Expected to find: \"%s\" Please resolve this manually", copyright)
+				err = fmt.Errorf("license file has a copyright statement, but it is malformed; Expected to find: \"%s\" Please resolve this manually", expectedCopyright)
 				cliLogger.Error(err.Error())
 				cobra.CheckErr(err)
 			}
@@ -153,7 +159,7 @@ var licenseCmd = &cobra.Command{
 			}
 
 			cmd.Println("Copyright statement is missing... attempting to add it")
-			err = licensecheck.AddHeader(file, copyright)
+			err = licensecheck.AddHeader(file, expectedCopyright)
 			if err != nil {
 				cliLogger.Error("Error adding header", err)
 			}
@@ -174,4 +180,51 @@ func init() {
 	licenseCmd.Flags().IntP("year", "y", 0, "Year that the copyright statement should include")
 	licenseCmd.Flags().StringP("spdx", "s", "", "SPDX License Identifier indicating what the LICENSE file should represent")
 	licenseCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"IBM Corp.\")")
+}
+
+// buildExpectedCopyright determines the expected copyright statement based on:
+// - If LICENSE already has IBM copyright: uses file modification year logic
+// - Otherwise: uses standard copyright with current year from config
+func buildExpectedCopyright(file string, hasCopyright bool, conf *config.Config) string {
+	currentYear := time.Now().Year()
+
+	// Check if LICENSE file already has an IBM copyright
+	hasIBMCopyright := false
+	if hasCopyright {
+		content, err := os.ReadFile(file)
+		if err == nil && len(content) > 0 {
+			headerContent := string(content)
+			if len(headerContent) > 300 {
+				headerContent = headerContent[:300]
+			}
+			headerInfo := addlicense.ParseCopyrightHeader(headerContent)
+			if headerInfo != nil && headerInfo.Organization == "IBM" {
+				hasIBMCopyright = true
+			}
+		}
+	}
+
+	if hasIBMCopyright {
+		// Use file modification year logic for existing IBM copyrights
+		fileModYear, err := addlicense.GetFileModificationYear(file)
+		if err != nil {
+			fileModYear = currentYear
+		}
+
+		// Only use current year if file was actually modified this year
+		endYear := fileModYear
+		if fileModYear == currentYear {
+			endYear = currentYear
+		}
+
+		if conf.Project.CopyrightYear == 0 {
+			return "Copyright " + conf.Project.CopyrightHolder + " " + strconv.Itoa(endYear)
+		} else if conf.Project.CopyrightYear == endYear {
+			return "Copyright " + conf.Project.CopyrightHolder + " " + strconv.Itoa(endYear)
+		}
+		return fmt.Sprintf("Copyright %s %d, %d", conf.Project.CopyrightHolder, conf.Project.CopyrightYear, endYear)
+	}
+
+	// Use standard copyright with current year
+	return "Copyright " + conf.Project.CopyrightHolder + " " + conf.FormatCopyrightYears()
 }

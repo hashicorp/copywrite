@@ -103,7 +103,7 @@ func executeTemplate(t *template.Template, d LicenseData, top, mid, bot string) 
 	return out.Bytes(), nil
 }
 
-const tmplApache = `Copyright {{.Holder}} {{.Year}}
+const tmplApache = `Copyright {{.Year}} {{.Holder}} 
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -117,11 +117,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.`
 
-const tmplBSD = `Copyright (c) {{.Holder}} {{.Year}} All rights reserved.
+const tmplBSD = `Copyright (c) {{.Year}} {{.Holder}} All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.`
 
-const tmplMIT = `Copyright (c) {{.Holder}} {{.Year}}
+const tmplMIT = `Copyright (c) {{.Year}} {{.Holder}}
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -144,9 +144,9 @@ const tmplMPL = `This Source Code Form is subject to the terms of the Mozilla Pu
 License, v. 2.0. If a copy of the MPL was not distributed with this
 file, You can obtain one at https://mozilla.org/MPL/2.0/.`
 
-const tmplSPDX = `Copyright (c){{ if .Holder }} {{.Holder}}{{ end }}{{ if .Year }} {{.Year}}{{ end }}
+const tmplSPDX = `Copyright{{ if .Holder }} {{.Holder}}{{ end }}{{ if .Year }} {{.Year}}{{ end }}
 {{ if .SPDXID }}SPDX-License-Identifier: {{.SPDXID}}{{ end }}`
 
-const tmplCopyrightOnly = `Copyright (c){{ if .Holder }} {{.Holder}}{{ end }}{{ if .Year }} {{.Year}}{{ end }}`
+const tmplCopyrightOnly = `Copyright{{ if .Holder }} {{.Holder}}{{ end }}{{ if .Year }} {{.Year}}{{ end }}`
 
 const spdxSuffix = "\n\nSPDX-License-Identifier: {{.SPDXID}}"

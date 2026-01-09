@@ -234,15 +234,27 @@ func Run(
 
 func processFile(f *file, t *template.Template, license LicenseData, checkonly bool, verbose bool, logger *log.Logger) error {
 	if checkonly {
+		// First check if existing headers need updates (works for all files including LICENSE)
+		needsUpdate, err := CheckIfHeaderNeedsUpdate(f.path, license)
+		if err != nil {
+			logger.Printf("%s: %v", f.path, err)
+			return err
+		}
+		if needsUpdate {
+			logger.Printf("%s\n", f.path)
+			return errors.New("header needs update")
+		}
+
 		// Check if file extension is known
 		lic, err := licenseHeader(f.path, t, license)
 		if err != nil {
 			logger.Printf("%s: %v", f.path, err)
 			return err
 		}
-		if lic == nil { // Unknown fileExtension
+		if lic == nil { // Unknown fileExtension (e.g., LICENSE files handled by UpdateFileHeaders)
 			return nil
 		}
+
 		// Check if file has a license
 		hasLicense, err := fileHasLicense(f.path)
 		if err != nil {
@@ -254,13 +266,27 @@ func processFile(f *file, t *template.Template, license LicenseData, checkonly b
 			return errors.New("missing license header")
 		}
 	} else {
+		// First, try to update existing headers
+		updated, err := UpdateFileHeaders(f.path, f.mode, t, license)
+		if err != nil {
+			logger.Printf("%s: %v", f.path, err)
+			return err
+		}
+		if updated {
+			if verbose {
+				logger.Printf("%s header updated", f.path)
+			}
+			return nil
+		}
+
+		// If no update was made, try adding a new license
 		modified, err := addLicense(f.path, f.mode, t, license)
 		if err != nil {
 			logger.Printf("%s: %v", f.path, err)
 			return err
 		}
 		if verbose && modified {
-			logger.Printf("%s modified", f.path)
+			logger.Printf("%s header added", f.path)
 		}
 	}
 	return nil

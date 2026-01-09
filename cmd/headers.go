@@ -112,7 +112,7 @@ config, see the "copywrite init" command.`,
 		// cobra.CheckErr on the return, which will indeed output to stderr and
 		// return a non-zero error code.
 
-		gha.StartGroup("The following files are missing headers:")
+		gha.StartGroup("The following files are missing headers and/or have incorrect headers:")
 		err := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
 		gha.EndGroup()
 
