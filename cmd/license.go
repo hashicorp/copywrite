@@ -66,7 +66,7 @@ var licenseCmd = &cobra.Command{
 		cmd.Printf("Using copyright years: %v\n", conf.FormatCopyrightYears())
 		cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
 
-		copyright := "Copyright " + conf.FormatCopyrightYears() + " " + conf.Project.CopyrightHolder
+		copyright := "Copyright " + conf.Project.CopyrightHolder + " " + conf.FormatCopyrightYears()
 
 		licenseFiles, err := licensecheck.FindLicenseFiles(dirPath)
 		if err != nil {

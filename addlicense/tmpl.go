@@ -103,7 +103,7 @@ func executeTemplate(t *template.Template, d LicenseData, top, mid, bot string) 
 	return out.Bytes(), nil
 }
 
-const tmplApache = `Copyright {{.Year}} {{.Holder}}
+const tmplApache = `Copyright {{.Holder}} {{.Year}}
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -117,11 +117,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.`
 
-const tmplBSD = `Copyright (c) {{.Year}} {{.Holder}} All rights reserved.
+const tmplBSD = `Copyright (c) {{.Holder}} {{.Year}} All rights reserved.
 Use of this source code is governed by a BSD-style
 license that can be found in the LICENSE file.`
 
-const tmplMIT = `Copyright (c) {{.Year}} {{.Holder}}
+const tmplMIT = `Copyright (c) {{.Holder}} {{.Year}}
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
