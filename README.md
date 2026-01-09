@@ -65,12 +65,38 @@ copywrite headers --spdx "MPL-2.0"
 You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined
 [here](#config-structure).
 
+### Automatic Header Updates
+
+The `copywrite headers` command automatically updates existing copyright headers in addition to adding missing ones:
+
+**Update Scenarios:**
+- **HashiCorp Header Migration**: Automatically converts headers from HashiCorp to your configured holder (e.g., IBM Corp.)
+  - Example: `Copyright (c) 2020 HashiCorp, Inc.` → `Copyright IBM Corp. 2014, 2026`
+- **Year Range Updates**: Updates year ranges when files are modified in the current year
+  - Example: `Copyright IBM Corp. 2014, 2020` → `Copyright IBM Corp. 2014, 2026` (when file modified in 2026)
+- **Config Year Changes**: Updates start year when `copyright_year` changes in `.copywrite.hcl`
+  - Example: If config changes from `2013` to `2014`, headers update: `2013, 2020` → `2014, 2020`
+- **Additional Text Preservation**: Any text after the copyright holder is preserved during updates
+  - Example: `Copyright IBM Corp. 2014, 2020 . Custom text` maintains `. Custom text`
+- **LICENSE File Updates**: Plain text LICENSE files are updated using the same logic (no comment markers needed)
+
+**Update Rules:**
+- HashiCorp headers are always converted to your configured copyright holder
+- Headers already matching your configured holder are updated when:
+  - File is modified in the current year AND end year is outdated
+  - Config start year differs from header start year
+- Headers from other organizations (Google, Microsoft, etc.) are left unchanged
+- Only the copyright line is modified; all other code remains unchanged
+- Supports all comment styles: `//`, `#`, `/*`, and plain text
+
 ### `--plan` Flag
 
 Both the `headers` and `license` commands allow you to use a `--plan` flag, which
 performs a dry-run and will outline what changes would be made. This flag also
 returns a non-zero exit code if any changes are needed. As such, it can be used
 to validate if a repo is in compliance or not.
+
+The plan mode now reports both missing headers and files with incorrect/outdated headers.
 
 ## Config Structure
 
@@ -99,11 +125,14 @@ project {
 
   # (OPTIONAL) Represents the year that the project initially began
   # This is used as the starting year in copyright statements
-  # If set and different from current year, headers will show: "copyright_year, current_year"
-  # If set and same as current year, headers will show: "current_year"
-  # If not set (0), the tool will auto-detect from git history (first commit year)
-  # If auto-detection fails, it will fallback to current year only
-  # Default: 0 (auto-detect)
+  # When automatic header updates run:
+  #   - Headers from Hashicorp are converted using this year
+  #   - Existing headers with wrong start year are corrected
+  # Year range format:
+  #   - If copyright_year == current_year: "current_year"
+  #   - If copyright_year < current_year: "copyright_year, current_year"
+  #   - If file not modified in current year: "copyright_year, last_modified_year"
+  # Default: 0 (auto-detect from git history, fallback to current year)
   # copyright_year = 0
 
   # (OPTIONAL) A list of globs that should not have copyright or license headers .
