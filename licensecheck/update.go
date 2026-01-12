@@ -79,8 +79,10 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 	}
 	content := line[contentStart:]
 
-	// Must contain "copyright"
-	if !strings.Contains(strings.ToLower(content), "copyright") {
+	// Must start with "copyright" (case-insensitive) - not just contain it anywhere
+	// This ensures we only match actual copyright statements, not comments that mention copyright
+	content = strings.TrimSpace(content)
+	if !regexp.MustCompile(`(?i)^copyright\b`).MatchString(content) {
 		return nil
 	}
 
@@ -158,8 +160,21 @@ func extractCommentPrefix(line string) string {
 	trimmed := strings.TrimLeft(line, " \t")
 	leadingSpace := line[:len(line)-len(trimmed)]
 
-	// Check for common comment prefixes
-	commentPrefixes := []string{"// ", "//", "# ", "#", "* ", "*", "/* "}
+	// Check for common comment prefixes (ordered by specificity - longer prefixes first)
+	commentPrefixes := []string{
+		"<%/* ", "<%/*", // EJS templates
+		"(** ", "(**", // OCaml
+		"/** ", "/**", // JSDoc-style comments
+		"<!-- ", "<!--", // HTML/XML comments
+		"{{! ", "{{!", // Handlebars comments
+		"/* ", "/*", // C-style block comments
+		";; ", ";;", // Lisp/Emacs Lisp
+		"-- ", "--", // Haskell/SQL
+		"// ", "//", // C++/Go/Rust style
+		"# ", "#", // Shell/Python/Ruby style
+		"% ", "%", // Erlang
+		"* ", "*", // Block comment continuation
+	}
 
 	for _, prefix := range commentPrefixes {
 		if strings.HasPrefix(trimmed, prefix) {
@@ -168,6 +183,90 @@ func extractCommentPrefix(line string) string {
 	}
 
 	return leadingSpace
+}
+
+// Generated file detection patterns (from addlicense)
+var (
+	// go generate: ^// Code generated .* DO NOT EDIT\.$
+	goGenerated = regexp.MustCompile(`(?m)^.{1,2} Code generated .* DO NOT EDIT\.$`)
+	// cargo raze: ^DO NOT EDIT! Replaced on runs of cargo-raze$
+	cargoRazeGenerated = regexp.MustCompile(`(?m)^DO NOT EDIT! Replaced on runs of cargo-raze$`)
+	// terraform init: ^# This file is maintained automatically by "terraform init"\.$
+	terraformGenerated = regexp.MustCompile(`(?m)^# This file is maintained automatically by "terraform init"\.$`)
+)
+
+// isGenerated returns true if the file content contains a string that implies
+// the file was auto-generated and should not be modified.
+// This prevents updating copyright headers in generated files.
+func isGenerated(content []byte) bool {
+	// Scan entire file for generated markers
+	return goGenerated.Match(content) ||
+		cargoRazeGenerated.Match(content) ||
+		terraformGenerated.Match(content)
+}
+
+// Special line prefixes that should be preserved at the start of files (from addlicense)
+var specialLineHeads = []string{
+	"#!",                       // shell script shebang
+	"<?xml",                    // XML declaration
+	"<!doctype",                // HTML doctype
+	"# encoding:",              // Ruby encoding
+	"# frozen_string_literal:", // Ruby interpreter instruction
+	"#\\",                      // Ruby Rack directive
+	"<?php",                    // PHP opening tag
+	"# escape",                 // Dockerfile directive
+	"# syntax",                 // Dockerfile directive
+	"/** @jest-environment",    // Jest Environment string
+}
+
+// Sentinel file special patterns (from addlicense)
+var sentinelHeadPatterns = []string{
+	`^#.*\n?(#.*\n?)*\n`,
+	`^//.*\n?(//.*\n?)*\n`,
+	`^/\*.*\n?(.*\n?)*\*/\n\n`,
+}
+
+// hasSpecialFirstLine checks if the file content starts with a special line
+// that should be preserved (like shebangs, XML declarations, etc.)
+func hasSpecialFirstLine(content []byte, filePath string) bool {
+	if len(content) == 0 {
+		return false
+	}
+
+	// Check for Sentinel file patterns
+	if strings.HasSuffix(strings.ToLower(filepath.Base(filePath)), ".sentinel") {
+		for _, pattern := range sentinelHeadPatterns {
+			if matched, _ := regexp.Match(pattern, content); matched {
+				return true
+			}
+		}
+	}
+
+	// Get first line
+	firstLine := content
+	for i, c := range content {
+		if c == '\n' {
+			firstLine = content[:i+1]
+			break
+		}
+	}
+
+	// Check against special prefixes
+	lowerFirst := strings.ToLower(string(firstLine))
+	for _, prefix := range specialLineHeads {
+		if strings.HasPrefix(lowerFirst, prefix) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// executeGitCommand executes a git command and returns the output
+func executeGitCommand(dir string, args ...string) ([]byte, error) {
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	return cmd.Output()
 }
 
 // parseYearFromGitOutput parses the year from git command output
@@ -193,6 +292,45 @@ func parseYearFromGitOutput(output []byte, useFirstLine bool) (int, error) {
 	return year, nil
 }
 
+// calculateYearUpdates determines if a copyright needs updating and calculates new years
+// Returns: (shouldUpdate bool, newStartYear int, newEndYear int)
+func calculateYearUpdates(
+	info *CopyrightInfo,
+	canonicalStartYear int,
+	lastCommitYear int,
+	currentYear int,
+	forceCurrentYear bool,
+) (bool, int, int) {
+	shouldUpdate := false
+	newStartYear := info.StartYear
+	newEndYear := info.EndYear
+
+	// Condition 1: Update start year if canonical year differs from file's start year
+	if canonicalStartYear > 0 && info.StartYear != canonicalStartYear {
+		newStartYear = canonicalStartYear
+		shouldUpdate = true
+	}
+
+	// Condition 2: Check if file was modified after the copyright end year OR we're making any update
+	if lastCommitYear > info.EndYear || shouldUpdate {
+		// File was modified after copyright end year (or will be modified by us), update end year
+		// Use lastCommitYear if available, otherwise fall back to currentYear
+		targetEndYear := currentYear
+		if info.EndYear < targetEndYear {
+			newEndYear = targetEndYear
+			shouldUpdate = true
+		}
+	}
+
+	// Condition 3: Force current year if requested (e.g., for LICENSE when other files updated)
+	if forceCurrentYear && info.EndYear < currentYear {
+		newEndYear = currentYear
+		shouldUpdate = true
+	}
+
+	return shouldUpdate, newStartYear, newEndYear
+}
+
 // GetFileLastCommitYear returns the year of the last commit that modified a file
 func GetFileLastCommitYear(filePath string) (int, error) {
 	absPath, err := filepath.Abs(filePath)
@@ -200,10 +338,10 @@ func GetFileLastCommitYear(filePath string) (int, error) {
 		return 0, err
 	}
 
-	cmd := exec.Command("git", "log", "-1", "--format=%ad", "--date=format:%Y", "--", filepath.Base(absPath))
-	cmd.Dir = filepath.Dir(absPath)
-
-	output, err := cmd.Output()
+	output, err := executeGitCommand(
+		filepath.Dir(absPath),
+		"log", "-1", "--format=%ad", "--date=format:%Y", "--", filepath.Base(absPath),
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -213,10 +351,7 @@ func GetFileLastCommitYear(filePath string) (int, error) {
 
 // GetRepoFirstCommitYear returns the year of the first commit in the repository
 func GetRepoFirstCommitYear(workingDir string) (int, error) {
-	cmd := exec.Command("git", "log", "--reverse", "--format=%ad", "--date=format:%Y")
-	cmd.Dir = workingDir
-
-	output, err := cmd.Output()
+	output, err := executeGitCommand(workingDir, "log", "--reverse", "--format=%ad", "--date=format:%Y")
 	if err != nil {
 		return 0, err
 	}
@@ -226,15 +361,66 @@ func GetRepoFirstCommitYear(workingDir string) (int, error) {
 
 // GetRepoLastCommitYear returns the year of the last commit in the repository
 func GetRepoLastCommitYear(workingDir string) (int, error) {
-	cmd := exec.Command("git", "log", "-1", "--format=%ad", "--date=format:%Y")
-	cmd.Dir = workingDir
-
-	output, err := cmd.Output()
+	output, err := executeGitCommand(workingDir, "log", "-1", "--format=%ad", "--date=format:%Y")
 	if err != nil {
 		return 0, err
 	}
 
 	return parseYearFromGitOutput(output, false)
+}
+
+// evaluateCopyrightUpdates evaluates all copyrights in a file and returns which ones need updating
+// This is shared logic between UpdateCopyrightHeader and NeedsUpdate
+func evaluateCopyrightUpdates(
+	copyrights []*CopyrightInfo,
+	targetHolder string,
+	configYear int,
+	lastCommitYear int,
+	currentYear int,
+	forceCurrentYear bool,
+	repoFirstYear int,
+) []*struct {
+	info         *CopyrightInfo
+	newStartYear int
+	newEndYear   int
+} {
+	// If configYear is 0, use repo's first commit year
+	canonicalStartYear := configYear
+	if canonicalStartYear == 0 && repoFirstYear > 0 {
+		canonicalStartYear = repoFirstYear
+	}
+
+	var updates []*struct {
+		info         *CopyrightInfo
+		newStartYear int
+		newEndYear   int
+	}
+
+	// Process each copyright statement
+	for _, info := range copyrights {
+		// Check if holder matches target (case-insensitive partial match)
+		if !strings.Contains(strings.ToLower(info.Holder), strings.ToLower(targetHolder)) {
+			continue
+		}
+
+		shouldUpdate, newStartYear, newEndYear := calculateYearUpdates(
+			info, canonicalStartYear, lastCommitYear, currentYear, forceCurrentYear,
+		)
+
+		if shouldUpdate {
+			updates = append(updates, &struct {
+				info         *CopyrightInfo
+				newStartYear int
+				newEndYear   int
+			}{
+				info:         info,
+				newStartYear: newStartYear,
+				newEndYear:   newEndYear,
+			})
+		}
+	}
+
+	return updates
 }
 
 // UpdateCopyrightHeader updates all copyright headers in a file if needed
@@ -243,6 +429,17 @@ func GetRepoLastCommitYear(workingDir string) (int, error) {
 func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int, forceCurrentYear bool) (bool, error) {
 	// Skip .copywrite.hcl config file
 	if filepath.Base(filePath) == ".copywrite.hcl" {
+		return false, nil
+	}
+
+	// Read file content once for all checks
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return false, err
+	}
+
+	// Skip generated files (DO NOT EDIT markers, etc.)
+	if isGenerated(content) {
 		return false, nil
 	}
 
@@ -258,73 +455,32 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 	}
 
 	currentYear := time.Now().Year()
-
-	// Get last commit year once for the file
 	lastCommitYear, _ := GetFileLastCommitYear(filePath)
+	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
 
-	// If configYear is 0, try to auto-detect from repo's first commit
-	canonicalStartYear := configYear
-	if canonicalStartYear == 0 {
-		if repoFirstYear, err := GetRepoFirstCommitYear(filepath.Dir(filePath)); err == nil && repoFirstYear > 0 {
-			canonicalStartYear = repoFirstYear
-		}
+	// Evaluate which copyrights need updating
+	updates := evaluateCopyrightUpdates(
+		copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
+	)
+
+	if len(updates) == 0 {
+		return false, nil
 	}
 
-	// Read file content
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return false, err
-	}
-
+	// Apply updates
 	lines := strings.Split(string(content), "\n")
-	modified := false
-
-	// Process each copyright statement
-	for _, info := range copyrights {
-		// Check if holder matches target (case-insensitive partial match)
-		if !strings.Contains(strings.ToLower(info.Holder), strings.ToLower(targetHolder)) {
-			continue
-		}
-
-		shouldUpdate := false
-		newStartYear := info.StartYear
-		newEndYear := info.EndYear
-
-		// Condition 1: Update start year if canonical year differs from file's start year
-		if canonicalStartYear > 0 && info.StartYear != canonicalStartYear {
-			newStartYear = canonicalStartYear
-			shouldUpdate = true
-		}
-
-		// Condition 2: Check if file was modified after the copyright end year OR we're making any update
-		if lastCommitYear > info.EndYear || shouldUpdate {
-			// File was modified after copyright end year (or will be modified by us), update end year
-			if info.EndYear < currentYear {
-				newEndYear = currentYear
-				shouldUpdate = true
-			}
-		}
-
-		// Condition 3: Force current year if requested (e.g., for LICENSE when other files updated)
-		if forceCurrentYear && info.EndYear < currentYear {
-			newEndYear = currentYear
-			shouldUpdate = true
-		}
-
-		if !shouldUpdate {
-			continue
-		}
-
+	for _, update := range updates {
+		info := update.info
 		if info.LineNumber < 1 || info.LineNumber > len(lines) {
 			continue
 		}
 
 		// Reconstruct the copyright line preserving format and trailing text
 		var yearStr string
-		if newStartYear == newEndYear {
-			yearStr = fmt.Sprintf("%d", newEndYear)
+		if update.newStartYear == update.newEndYear {
+			yearStr = fmt.Sprintf("%d", update.newEndYear)
 		} else {
-			yearStr = fmt.Sprintf("%d, %d", newStartYear, newEndYear)
+			yearStr = fmt.Sprintf("%d, %d", update.newStartYear, update.newEndYear)
 		}
 
 		// Build new line: prefix + "Copyright " + holder + " " + years + trailing
@@ -334,11 +490,6 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 		}
 
 		lines[info.LineNumber-1] = newLine
-		modified = true
-	}
-
-	if !modified {
-		return false, nil
 	}
 
 	// Write back
@@ -360,6 +511,17 @@ func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurr
 		return false, nil
 	}
 
+	// Read file content for generated file check
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return false, err
+	}
+
+	// Skip generated files (DO NOT EDIT markers, etc.)
+	if isGenerated(content) {
+		return false, nil
+	}
+
 	// Extract all copyright statements in the file
 	copyrights, err := ExtractAllCopyrightInfo(filePath)
 	if err != nil {
@@ -371,49 +533,13 @@ func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurr
 	}
 
 	currentYear := time.Now().Year()
-
-	// Get last commit year once for the file
 	lastCommitYear, _ := GetFileLastCommitYear(filePath)
+	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
 
-	// If configYear is 0, try to auto-detect from repo's first commit
-	canonicalStartYear := configYear
-	if canonicalStartYear == 0 {
-		if repoFirstYear, err := GetRepoFirstCommitYear(filepath.Dir(filePath)); err == nil && repoFirstYear > 0 {
-			canonicalStartYear = repoFirstYear
-		}
-	}
+	// Evaluate which copyrights need updating
+	updates := evaluateCopyrightUpdates(
+		copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
+	)
 
-	// Process each copyright statement
-	for _, info := range copyrights {
-		// Check if holder matches target (case-insensitive partial match)
-		if !strings.Contains(strings.ToLower(info.Holder), strings.ToLower(targetHolder)) {
-			continue
-		}
-
-		needsUpdate := false
-
-		// Condition 1: Update start year if canonical year differs from file's start year
-		if canonicalStartYear > 0 && info.StartYear != canonicalStartYear {
-			needsUpdate = true
-		}
-
-		// Condition 2: Check if file was modified after the copyright end year OR we're making any update
-		if lastCommitYear > info.EndYear || needsUpdate {
-			// File was modified after copyright end year (or will be modified by us), update end year
-			if info.EndYear < currentYear {
-				needsUpdate = true
-			}
-		}
-
-		// Condition 3: Force current year if requested
-		if forceCurrentYear && info.EndYear < currentYear {
-			needsUpdate = true
-		}
-
-		if needsUpdate {
-			return true, nil
-		}
-	}
-
-	return false, nil
+	return len(updates) > 0, nil
 }
