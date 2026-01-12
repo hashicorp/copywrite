@@ -170,27 +170,19 @@ func extractCommentPrefix(line string) string {
 	return leadingSpace
 }
 
-// GetFileLastCommitYear returns the year of the last commit that modified a file
-func GetFileLastCommitYear(filePath string) (int, error) {
-	absPath, err := filepath.Abs(filePath)
-	if err != nil {
-		return 0, err
-	}
-
-	dir := filepath.Dir(absPath)
-	fileName := filepath.Base(absPath)
-
-	cmd := exec.Command("git", "log", "-1", "--format=%ad", "--date=format:%Y", "--", fileName)
-	cmd.Dir = dir
-
-	output, err := cmd.Output()
-	if err != nil {
-		return 0, err
-	}
-
+// parseYearFromGitOutput parses the year from git command output
+func parseYearFromGitOutput(output []byte, useFirstLine bool) (int, error) {
 	yearStr := strings.TrimSpace(string(output))
 	if yearStr == "" {
 		return 0, fmt.Errorf("no commits found")
+	}
+
+	// For commands with multiple lines, extract the first line if requested
+	if useFirstLine && strings.Contains(yearStr, "\n") {
+		lines := strings.Split(yearStr, "\n")
+		if len(lines) > 0 {
+			yearStr = strings.TrimSpace(lines[0])
+		}
 	}
 
 	year, err := strconv.Atoi(yearStr)
@@ -199,6 +191,24 @@ func GetFileLastCommitYear(filePath string) (int, error) {
 	}
 
 	return year, nil
+}
+
+// GetFileLastCommitYear returns the year of the last commit that modified a file
+func GetFileLastCommitYear(filePath string) (int, error) {
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return 0, err
+	}
+
+	cmd := exec.Command("git", "log", "-1", "--format=%ad", "--date=format:%Y", "--", filepath.Base(absPath))
+	cmd.Dir = filepath.Dir(absPath)
+
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+
+	return parseYearFromGitOutput(output, false)
 }
 
 // GetRepoFirstCommitYear returns the year of the first commit in the repository
@@ -211,18 +221,20 @@ func GetRepoFirstCommitYear(workingDir string) (int, error) {
 		return 0, err
 	}
 
-	// Parse the first line (first commit year)
-	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-	if len(lines) == 0 || lines[0] == "" {
-		return 0, fmt.Errorf("no commits found")
-	}
+	return parseYearFromGitOutput(output, true)
+}
 
-	year, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+// GetRepoLastCommitYear returns the year of the last commit in the repository
+func GetRepoLastCommitYear(workingDir string) (int, error) {
+	cmd := exec.Command("git", "log", "-1", "--format=%ad", "--date=format:%Y")
+	cmd.Dir = workingDir
+
+	output, err := cmd.Output()
 	if err != nil {
 		return 0, err
 	}
 
-	return year, nil
+	return parseYearFromGitOutput(output, false)
 }
 
 // UpdateCopyrightHeader updates all copyright headers in a file if needed

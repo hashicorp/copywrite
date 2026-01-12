@@ -3,8 +3,11 @@
 This repo provides utilities for managing copyright headers and license files
 across many repos at scale.
 
-You can use it to add or validate copyright headers on source code files, add a
-LICENSE file to a repo, report on what licenses repos are using, and more.
+Features:
+- Add or validate copyright headers on source code files
+- Add and/or manage LICENSE files with git-aware copyright year detection
+- Report on licenses used across multiple repositories
+- Automate compliance checks in CI/CD pipelines
 
 ## Getting Started
 
@@ -33,7 +36,7 @@ Usage:
   copywrite [command]
 
 Common Commands:
-  headers     Adds missing copyright headers to all source code files
+  headers     Adds missing copyright headers to all source code files and/or update existing headers based on the each file's last updated year.
   init        Generates a .copywrite.hcl config for a new project
   license     Validates that a LICENSE file is present and remediates any issues if found
 
@@ -62,8 +65,18 @@ scan all files in your repo and copyright headers to any that are missing:
 copywrite headers --spdx "MPL-2.0"
 ```
 
-You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined
-[here](#config-structure).
+The `copywrite license` command validates and manages LICENSE files with git-aware copyright years:
+
+```sh
+copywrite license --spdx "MPL-2.0"
+```
+
+**Copyright Year Behavior:**
+- **Start Year**: Auto-detected from config file and if not found defaults to repository's first commit
+- **End Year**: Based on repository's last commit (not forced to current year)
+- **Example**: First commit 2020, last commit 2025 → `Copyright <Holder> 2020, 2025`
+
+You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined [here](#config-structure).
 
 ### `--plan` Flag
 
@@ -99,8 +112,8 @@ project {
 
   # (OPTIONAL) Represents the year that the project initially began
   # This is used as the starting year in copyright statements
-  # If set and different from current year, headers will show: "copyright_year, current_year"
-  # If set and same as current year, headers will show: "current_year"
+  # If set and different from current year, headers will show: "copyright_year, year-2"
+  # If set and same as year-2, headers will show: "copyright_year"
   # If not set (0), the tool will auto-detect from git history (first commit year)
   # If auto-detection fails, it will fallback to current year only
   # Default: 0 (auto-detect)
@@ -170,6 +183,24 @@ snippet to your repo's `.pre-commit-config.yaml`:
     hooks:
       - id: copywrite-headers
 ```
+
+## Technical Details
+
+### Copyright Year Logic
+
+**Source File Headers:**
+- End year: Individual file's last commit year
+- Updates when file is modified
+
+**LICENSE Files:**
+- End year: Repository's last commit year (git-aware)
+- Preserves historical accuracy for archived projects
+
+### Key Functions
+
+- `GetRepoLastCommitYear()` - Repository's last commit year
+- `UpdateCopyrightHeader()` - Git-aware header updates
+- `determineLicenseCopyrightYears()` - Smart LICENSE year calculation
 
 ## Debugging
 
