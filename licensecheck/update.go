@@ -32,7 +32,7 @@ func ExtractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	lineNum := 0
