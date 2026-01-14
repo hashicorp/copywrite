@@ -96,7 +96,7 @@ config, see the "copywrite init" command.`,
 
 		// STEP 1: Update existing copyright headers
 		gha.StartGroup("Updating existing copyright headers:")
-		updatedCount := updateExistingHeaders(cmd, ignoredPatterns, plan)
+		updatedCount, anyFileUpdated, licensePath := updateExistingHeaders(cmd, ignoredPatterns, plan)
 		gha.EndGroup()
 		if updatedCount > 0 {
 			if plan {
@@ -133,6 +133,16 @@ config, see the "copywrite init" command.`,
 		err := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
 		gha.EndGroup()
 
+		// STEP 4: Update LICENSE file if any files were modified (either updated or added headers)
+		// In plan mode: if addlicense found missing headers (returns error), assume files would be modified
+		// In normal mode: if addlicense succeeded, assume files were modified
+		if err != nil || (!plan && err == nil) {
+			anyFileUpdated = true
+		}
+
+		updateLicenseFile(cmd, licensePath, anyFileUpdated, plan)
+
+		// Check for errors after LICENSE file update so we still show what would happen
 		cobra.CheckErr(err)
 	},
 }
@@ -150,7 +160,8 @@ func init() {
 }
 
 // updateExistingHeaders walks through files and updates copyright headers based on config and git history
-func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun bool) int {
+// Returns the count of updated files, a boolean indicating if any file was updated, and the LICENSE file path (if found)
+func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun bool) (int, bool, string) {
 	targetHolder := conf.Project.CopyrightHolder
 	if targetHolder == "" {
 		targetHolder = "IBM Corp."
@@ -168,13 +179,13 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 		}
 
 		// Check if file should be ignored
-		if shouldIgnoreFile(path, ignoredPatterns) {
+		if addlicense.FileMatches(path, ignoredPatterns) {
 			return nil
 		}
 
-		// Track LICENSE file location but process it later
-		fileName := strings.ToUpper(filepath.Base(path))
-		if fileName == "LICENSE" || fileName == "LICENSE.TXT" || fileName == "LICENSE.MD" {
+		// Capture LICENSE file path but skip processing it here - it will be handled separately
+		base := filepath.Base(path)
+		if strings.EqualFold(base, "LICENSE") || strings.EqualFold(base, "LICENSE.TXT") || strings.EqualFold(base, "LICENSE.MD") {
 			licensePath = path
 			return nil
 		}
@@ -200,97 +211,33 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 		return nil
 	})
 
-	// Process LICENSE file at the end, forcing current year if any file was updated
-	if licensePath != "" {
-		if !dryRun {
-			updated, err := licensecheck.UpdateCopyrightHeader(licensePath, targetHolder, configYear, anyFileUpdated)
-			if err == nil && updated {
-				cmd.Printf("  %s\n", licensePath)
-				updatedCount++
-			}
-		} else {
-			needsUpdate, err := licensecheck.NeedsUpdate(licensePath, targetHolder, configYear, anyFileUpdated)
-			if err == nil && needsUpdate {
-				cmd.Printf("  %s\n", licensePath)
-				updatedCount++
-			}
-		}
-	}
-
-	return updatedCount
+	return updatedCount, anyFileUpdated, licensePath
 }
 
-// shouldIgnoreFile checks if a file path matches any of the ignore patterns
-func shouldIgnoreFile(path string, patterns []string) bool {
-	path = filepath.ToSlash(path)
-
-	for _, pattern := range patterns {
-		pattern = filepath.ToSlash(pattern)
-
-		// Handle ** for recursive matching
-		if strings.Contains(pattern, "**") {
-			parts := strings.Split(pattern, "**")
-			if len(parts) == 2 {
-				prefix := strings.TrimPrefix(parts[0], "/")
-				suffix := strings.TrimSuffix(strings.TrimPrefix(parts[1], "/"), "/")
-
-				hasPrefix := prefix == "" || strings.HasPrefix(path, prefix)
-				hasSuffix := suffix == "" || strings.Contains(path, suffix)
-
-				if hasPrefix && hasSuffix {
-					return true
-				}
-			}
-			continue
-		}
-
-		// Handle * for wildcard matching
-		if strings.Contains(pattern, "*") {
-			matched := matchWildcard(path, pattern)
-			if matched {
-				return true
-			}
-			continue
-		}
-
-		// Exact match
-		if path == pattern {
-			return true
-		}
+// updateLicenseFile updates the LICENSE file with current year if any files were modified
+func updateLicenseFile(cmd *cobra.Command, licensePath string, anyFileUpdated bool, dryRun bool) {
+	// If no LICENSE file was found during the walk, nothing to do
+	if licensePath == "" {
+		return
 	}
 
-	return false
-}
-
-// matchWildcard performs simple wildcard matching
-func matchWildcard(path, pattern string) bool {
-	parts := strings.Split(pattern, "*")
-	if len(parts) == 1 {
-		return path == pattern
+	targetHolder := conf.Project.CopyrightHolder
+	if targetHolder == "" {
+		targetHolder = "IBM Corp."
 	}
 
-	// Check prefix
-	if parts[0] != "" && !strings.HasPrefix(path, parts[0]) {
-		return false
-	}
+	configYear := conf.Project.CopyrightYear
 
-	// Check suffix
-	if parts[len(parts)-1] != "" && !strings.HasSuffix(path, parts[len(parts)-1]) {
-		return false
-	}
-
-	// Check middle parts
-	pos := len(parts[0])
-	for i := 1; i < len(parts)-1; i++ {
-		if parts[i] == "" {
-			continue
+	// Update LICENSE file, forcing current year if any file was updated
+	if !dryRun {
+		updated, err := licensecheck.UpdateCopyrightHeader(licensePath, targetHolder, configYear, anyFileUpdated)
+		if err == nil && updated {
+			cmd.Printf("\nUpdated LICENSE file: %s\n", licensePath)
 		}
-		idx := strings.Index(path[pos:], parts[i])
-		if idx == -1 {
-			return false
+	} else {
+		needsUpdate, err := licensecheck.NeedsUpdate(licensePath, targetHolder, configYear, anyFileUpdated)
+		if err == nil && needsUpdate {
+			cmd.Printf("\n[DRY RUN] Would update LICENSE file: %s\n", licensePath)
 		}
-		pos += idx + len(parts[i])
 	}
-
-	return true
 }

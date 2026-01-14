@@ -331,6 +331,18 @@ func calculateYearUpdates(
 	return shouldUpdate, newStartYear, newEndYear
 }
 
+// getRepoRoot finds the git repository root from a given directory
+func getRepoRoot(workingDir string) (string, error) {
+	repoRootOutput, err := executeGitCommand(
+		workingDir,
+		"rev-parse", "--show-toplevel",
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to find git repo root: %w", err)
+	}
+	return strings.TrimSpace(string(repoRootOutput)), nil
+}
+
 // GetFileLastCommitYear returns the year of the last commit that modified a file
 func GetFileLastCommitYear(filePath string) (int, error) {
 	absPath, err := filepath.Abs(filePath)
@@ -338,9 +350,22 @@ func GetFileLastCommitYear(filePath string) (int, error) {
 		return 0, err
 	}
 
+	// Find repository root
+	repoRoot, err := getRepoRoot(filepath.Dir(absPath))
+	if err != nil {
+		return 0, err
+	}
+
+	// Calculate relative path from repo root to file
+	relPath, err := filepath.Rel(repoRoot, absPath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to calculate relative path: %w", err)
+	}
+
+	// Run git log from repo root with relative path
 	output, err := executeGitCommand(
-		filepath.Dir(absPath),
-		"log", "-1", "--format=%ad", "--date=format:%Y", "--", filepath.Base(absPath),
+		repoRoot,
+		"log", "-1", "--format=%ad", "--date=format:%Y", "--", relPath,
 	)
 	if err != nil {
 		return 0, err
@@ -351,7 +376,13 @@ func GetFileLastCommitYear(filePath string) (int, error) {
 
 // GetRepoFirstCommitYear returns the year of the first commit in the repository
 func GetRepoFirstCommitYear(workingDir string) (int, error) {
-	output, err := executeGitCommand(workingDir, "log", "--reverse", "--format=%ad", "--date=format:%Y")
+	// Find repository root for consistency
+	repoRoot, err := getRepoRoot(workingDir)
+	if err != nil {
+		return 0, err
+	}
+
+	output, err := executeGitCommand(repoRoot, "log", "--reverse", "--format=%ad", "--date=format:%Y")
 	if err != nil {
 		return 0, err
 	}
@@ -361,7 +392,13 @@ func GetRepoFirstCommitYear(workingDir string) (int, error) {
 
 // GetRepoLastCommitYear returns the year of the last commit in the repository
 func GetRepoLastCommitYear(workingDir string) (int, error) {
-	output, err := executeGitCommand(workingDir, "log", "-1", "--format=%ad", "--date=format:%Y")
+	// Find repository root for consistency
+	repoRoot, err := getRepoRoot(workingDir)
+	if err != nil {
+		return 0, err
+	}
+
+	output, err := executeGitCommand(repoRoot, "log", "-1", "--format=%ad", "--date=format:%Y")
 	if err != nil {
 		return 0, err
 	}
