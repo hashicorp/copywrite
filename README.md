@@ -36,7 +36,7 @@ Usage:
   copywrite [command]
 
 Common Commands:
-  headers     Adds missing copyright headers to all source code files and/or update existing headers based on the each file's last updated year.
+  headers     Adds missing copyright headers to all source code files and/or updates existing headers' year-1 and year-2 information.
   init        Generates a .copywrite.hcl config for a new project
   license     Validates that a LICENSE file is present and remediates any issues if found
 
