@@ -73,8 +73,8 @@ copywrite license --spdx "MPL-2.0"
 
 **Copyright Year Behavior:**
 - **Start Year**: Auto-detected from config file and if not found defaults to repository's first commit
-- **End Year**: Based on repository's last commit (not forced to current year)
-- **Example**: First commit 2020, last commit 2025 → `Copyright <Holder> 2020, 2025`
+- **End Year**: Set to current year when an update is triggered (git history only determines if update is needed)
+- **Update Trigger**: Git detects if file was modified since the copyright end year
 
 You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined [here](#config-structure).
 
@@ -189,12 +189,17 @@ snippet to your repo's `.pre-commit-config.yaml`:
 ### Copyright Year Logic
 
 **Source File Headers:**
-- End year: Individual file's last commit year
-- Updates when file is modified
+- End year: Set to current year when file is modified
+- Git history determines if update is needed (compares file's last commit year to copyright end year)
+- When triggered, end year updates to current year
 
 **LICENSE Files:**
-- End year: Repository's last commit year (git-aware)
-- Preserves historical accuracy for archived projects
+- End year: Set to current year when any project file is modified
+- Git history determines if update is needed (compares repo's last commit year to copyright end year)
+- When triggered, end year updates to current year
+- Preserves historical accuracy for archived projects (no forced updates)
+
+**Key Distinction:** Git history is used as a trigger to determine *whether* an update is needed, but the actual end year value is always set to the current year when an update occurs.
 
 ### Key Functions
 
