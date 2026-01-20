@@ -26,8 +26,8 @@ type CopyrightInfo struct {
 	TrailingText string // Any text after the years
 }
 
-// ExtractAllCopyrightInfo extracts all copyright information from a file
-func ExtractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
+// extractAllCopyrightInfo extracts all copyright information from a file
+func extractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -55,9 +55,9 @@ func ExtractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
 	return copyrights, scanner.Err()
 }
 
-// ExtractCopyrightInfo extracts the first copyright information from a file (for compatibility)
-func ExtractCopyrightInfo(filePath string) (*CopyrightInfo, error) {
-	copyrights, err := ExtractAllCopyrightInfo(filePath)
+// extractCopyrightInfo extracts the first copyright information from a file (for compatibility)
+func extractCopyrightInfo(filePath string) (*CopyrightInfo, error) {
+	copyrights, err := extractAllCopyrightInfo(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -343,8 +343,8 @@ func getRepoRoot(workingDir string) (string, error) {
 	return strings.TrimSpace(string(repoRootOutput)), nil
 }
 
-// GetFileLastCommitYear returns the year of the last commit that modified a file
-func GetFileLastCommitYear(filePath string) (int, error) {
+// getFileLastCommitYear returns the year of the last commit that modified a file
+func getFileLastCommitYear(filePath string) (int, error) {
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {
 		return 0, err
@@ -481,7 +481,7 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 	}
 
 	// Extract all copyright statements in the file
-	copyrights, err := ExtractAllCopyrightInfo(filePath)
+	copyrights, err := extractAllCopyrightInfo(filePath)
 	if err != nil {
 		return false, err
 	}
@@ -492,7 +492,7 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 	}
 
 	currentYear := time.Now().Year()
-	lastCommitYear, _ := GetFileLastCommitYear(filePath)
+	lastCommitYear, _ := getFileLastCommitYear(filePath)
 	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
 
 	// Evaluate which copyrights need updating
@@ -560,7 +560,7 @@ func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurr
 	}
 
 	// Extract all copyright statements in the file
-	copyrights, err := ExtractAllCopyrightInfo(filePath)
+	copyrights, err := extractAllCopyrightInfo(filePath)
 	if err != nil {
 		return false, err
 	}
@@ -570,7 +570,7 @@ func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurr
 	}
 
 	currentYear := time.Now().Year()
-	lastCommitYear, _ := GetFileLastCommitYear(filePath)
+	lastCommitYear, _ := getFileLastCommitYear(filePath)
 	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
 
 	// Evaluate which copyrights need updating

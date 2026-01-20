@@ -250,7 +250,7 @@ func main() {
 	err := os.WriteFile(testFile, []byte(fileContent), 0644)
 	require.NoError(t, err)
 
-	copyrights, err := ExtractAllCopyrightInfo(testFile)
+	copyrights, err := extractAllCopyrightInfo(testFile)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(copyrights), 2, "Should find at least 2 copyright statements")
 
@@ -286,7 +286,7 @@ package main
 	err := os.WriteFile(testFile, []byte(fileContent), 0644)
 	require.NoError(t, err)
 
-	info, err := ExtractCopyrightInfo(testFile)
+	info, err := extractCopyrightInfo(testFile)
 	require.NoError(t, err)
 	require.NotNil(t, info)
 
@@ -307,7 +307,7 @@ package main
 	err := os.WriteFile(testFile, []byte(fileContent), 0644)
 	require.NoError(t, err)
 
-	info, err := ExtractCopyrightInfo(testFile)
+	info, err := extractCopyrightInfo(testFile)
 	require.NoError(t, err)
 	assert.Nil(t, info)
 }
