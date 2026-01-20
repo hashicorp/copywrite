@@ -36,7 +36,7 @@ Usage:
   copywrite [command]
 
 Common Commands:
-  headers     Adds missing copyright headers to all source code files and/or updates existing headers' year-1 and year-2 information.
+  headers     Adds missing copyright headers and updates existing headers' year information.
   init        Generates a .copywrite.hcl config for a new project
   license     Validates that a LICENSE file is present and remediates any issues if found
 
@@ -84,6 +84,23 @@ Both the `headers` and `license` commands allow you to use a `--plan` flag, whic
 performs a dry-run and will outline what changes would be made. This flag also
 returns a non-zero exit code if any changes are needed. As such, it can be used
 to validate if a repo is in compliance or not.
+
+## Technical Details
+
+### Copyright Year Logic
+
+**Source File Headers:**
+- End year: Set to current year when file is modified
+- Git history determines if update is needed (compares file's last commit year to copyright end year)
+- When triggered, end year updates to current year
+
+**LICENSE Files:**
+- End year: Set to current year when any project file is modified
+- Git history determines if update is needed (compares repo's last commit year to copyright end year)
+- When triggered, end year updates to current year
+- Preserves historical accuracy for archived projects (no forced updates)
+
+**Key Distinction:** Git history is used as a trigger to determine *whether* an update is needed, but the actual end year value is always set to the current year when an update occurs.
 
 ## Config Structure
 
@@ -183,29 +200,6 @@ snippet to your repo's `.pre-commit-config.yaml`:
     hooks:
       - id: copywrite-headers
 ```
-
-## Technical Details
-
-### Copyright Year Logic
-
-**Source File Headers:**
-- End year: Set to current year when file is modified
-- Git history determines if update is needed (compares file's last commit year to copyright end year)
-- When triggered, end year updates to current year
-
-**LICENSE Files:**
-- End year: Set to current year when any project file is modified
-- Git history determines if update is needed (compares repo's last commit year to copyright end year)
-- When triggered, end year updates to current year
-- Preserves historical accuracy for archived projects (no forced updates)
-
-**Key Distinction:** Git history is used as a trigger to determine *whether* an update is needed, but the actual end year value is always set to the current year when an update occurs.
-
-### Key Functions
-
-- `GetRepoLastCommitYear()` - Repository's last commit year
-- `UpdateCopyrightHeader()` - Git-aware header updates
-- `determineLicenseCopyrightYears()` - Smart LICENSE year calculation
 
 ## Debugging
 
