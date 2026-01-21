@@ -33,6 +33,7 @@ type Project struct {
 	CopyrightHolder string   `koanf:"copyright_holder"`
 	HeaderIgnore    []string `koanf:"header_ignore"`
 	License         string   `koanf:"license"`
+	LicenseTemplate string   `koanf:"license_template"`
 
 	// Upstream is optional and only used if a given repo pulls from another
 	Upstream string `koanf:"upstream"`
