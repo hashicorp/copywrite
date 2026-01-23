@@ -24,6 +24,7 @@ type CopyrightInfo struct {
 	EndYear      int
 	Prefix       string // Comment prefix (e.g., "// ", "# ")
 	TrailingText string // Any text after the years
+	PrefixIndex  int    // Byte index in the line where the comment prefix starts (for inline comments)
 }
 
 // extractAllCopyrightInfo extracts all copyright information from a file
@@ -69,18 +70,43 @@ func extractCopyrightInfo(filePath string) (*CopyrightInfo, error) {
 
 // parseCopyrightLine extracts copyright details from a line
 func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
-	// Extract comment prefix
-	prefix := extractCommentPrefix(line)
+	// Find a comment prefix anywhere in the line (handles inline comments)
 
-	// Get the content after the prefix
-	contentStart := len(prefix)
+	bestIdx := -1
+	bestPrefix := ""
+	for _, p := range commentPrefixes {
+		if idx := strings.Index(line, p); idx >= 0 {
+			if bestIdx == -1 || idx < bestIdx {
+				bestIdx = idx
+				bestPrefix = p
+			}
+		}
+	}
+
+	if bestIdx == -1 {
+		return nil
+	}
+
+	// Include contiguous spaces/tabs immediately before the prefix as part of the prefix index
+	prefixStart := bestIdx
+	for i := bestIdx - 1; i >= 0; i-- {
+		if line[i] == ' ' || line[i] == '\t' {
+			prefixStart = i
+		} else {
+			break
+		}
+	}
+
+	prefix := line[prefixStart : bestIdx+len(bestPrefix)]
+
+	// Get the content after the prefix occurrence
+	contentStart := bestIdx + len(bestPrefix)
 	if contentStart >= len(line) {
 		return nil
 	}
 	content := line[contentStart:]
 
 	// Must start with "copyright" (case-insensitive) - not just contain it anywhere
-	// This ensures we only match actual copyright statements, not comments that mention copyright
 	content = strings.TrimSpace(content)
 	if !regexp.MustCompile(`(?i)^copyright\b`).MatchString(content) {
 		return nil
@@ -90,6 +116,7 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 		LineNumber:   lineNum,
 		OriginalLine: line,
 		Prefix:       prefix,
+		PrefixIndex:  prefixStart,
 	}
 
 	// Remove "Copyright" and optional (c) from the beginning
@@ -159,23 +186,6 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 func extractCommentPrefix(line string) string {
 	trimmed := strings.TrimLeft(line, " \t")
 	leadingSpace := line[:len(line)-len(trimmed)]
-
-	// Check for common comment prefixes (ordered by specificity - longer prefixes first)
-	commentPrefixes := []string{
-		"<%/* ", "<%/*", // EJS templates
-		"(** ", "(**", // OCaml
-		"/** ", "/**", // JSDoc-style comments
-		"<!-- ", "<!--", // HTML/XML comments
-		"{{! ", "{{!", // Handlebars comments
-		"/* ", "/*", // C-style block comments
-		";; ", ";;", // Lisp/Emacs Lisp
-		"-- ", "--", // Haskell/SQL
-		"// ", "//", // C++/Go/Rust style
-		"# ", "#", // Shell/Python/Ruby style
-		"% ", "%", // Erlang
-		"* ", "*", // Block comment continuation
-	}
-
 	for _, prefix := range commentPrefixes {
 		if strings.HasPrefix(trimmed, prefix) {
 			return leadingSpace + prefix
@@ -224,6 +234,22 @@ var sentinelHeadPatterns = []string{
 	`^#.*\n?(#.*\n?)*\n`,
 	`^//.*\n?(//.*\n?)*\n`,
 	`^/\*.*\n?(.*\n?)*\*/\n\n`,
+}
+
+// Common comment prefixes used across parsing functions. Ordered by specificity.
+var commentPrefixes = []string{
+	"<%/* ", "<%/*",
+	"(** ", "(**",
+	"/** ", "/**",
+	"<!-- ", "<!--",
+	"{{! ", "{{!",
+	"/* ", "/*",
+	";; ", ";;",
+	"-- ", "--",
+	"// ", "//",
+	"# ", "#",
+	"% ", "%",
+	"* ", "*",
 }
 
 // hasSpecialFirstLine checks if the file content starts with a special line
@@ -295,6 +321,7 @@ func parseYearFromGitOutput(output []byte, useFirstLine bool) (int, error) {
 // calculateYearUpdates determines if a copyright needs updating and calculates new years
 // Returns: (shouldUpdate bool, newStartYear int, newEndYear int)
 func calculateYearUpdates(
+	filePath string,
 	info *CopyrightInfo,
 	canonicalStartYear int,
 	lastCommitYear int,
@@ -311,14 +338,17 @@ func calculateYearUpdates(
 		shouldUpdate = true
 	}
 
-	// Condition 2: Check if file was modified after the copyright end year OR we're making any update
-	if lastCommitYear > info.EndYear || shouldUpdate {
-		// File was modified after copyright end year (or will be modified by us), update end year
-		// Use lastCommitYear if available, otherwise fall back to currentYear
-		targetEndYear := currentYear
-		if info.EndYear < targetEndYear {
-			newEndYear = targetEndYear
-			shouldUpdate = true
+	// Condition 2: Only update end year if file was modified after the copyright end year, or forceCurrentYear is true
+	// But only if there are non-copyright changes in the file
+	if lastCommitYear > info.EndYear {
+		// Check for non-copyright changes between HEAD and HEAD~1
+		currentContent, err1 := getFileContentExcludingCopyright(filePath)
+		prevCommittedContent, err2 := getPreviousCommittedFileContent(filePath)
+		if err1 == nil && err2 == nil && currentContent != prevCommittedContent {
+			if info.EndYear < currentYear {
+				newEndYear = currentYear
+				shouldUpdate = true
+			}
 		}
 	}
 
@@ -409,6 +439,7 @@ func GetRepoLastCommitYear(workingDir string) (int, error) {
 // evaluateCopyrightUpdates evaluates all copyrights in a file and returns which ones need updating
 // This is shared logic between UpdateCopyrightHeader and NeedsUpdate
 func evaluateCopyrightUpdates(
+	filePath string,
 	copyrights []*CopyrightInfo,
 	targetHolder string,
 	configYear int,
@@ -441,7 +472,7 @@ func evaluateCopyrightUpdates(
 		}
 
 		shouldUpdate, newStartYear, newEndYear := calculateYearUpdates(
-			info, canonicalStartYear, lastCommitYear, currentYear, forceCurrentYear,
+			filePath, info, canonicalStartYear, lastCommitYear, currentYear, forceCurrentYear,
 		)
 
 		if shouldUpdate {
@@ -497,7 +528,7 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 
 	// Evaluate which copyrights need updating
 	updates := evaluateCopyrightUpdates(
-		copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
+		filePath, copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
 	)
 
 	if len(updates) == 0 {
@@ -512,7 +543,7 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 			continue
 		}
 
-		// Reconstruct the copyright line preserving format and trailing text
+		// Reconstruct the copyright fragment preserving format and trailing text.
 		var yearStr string
 		if update.newStartYear == update.newEndYear {
 			yearStr = fmt.Sprintf("%d", update.newEndYear)
@@ -520,13 +551,22 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 			yearStr = fmt.Sprintf("%d, %d", update.newStartYear, update.newEndYear)
 		}
 
-		// Build new line: prefix + "Copyright " + holder + " " + years + trailing
-		newLine := fmt.Sprintf("%sCopyright %s %s", info.Prefix, info.Holder, yearStr)
+		// Build the new copyright text (prefix included)
+		newCopyright := fmt.Sprintf("%sCopyright %s %s", info.Prefix, info.Holder, yearStr)
 		if info.TrailingText != "" {
-			newLine += info.TrailingText
+			newCopyright += info.TrailingText
 		}
 
-		lines[info.LineNumber-1] = newLine
+		// If PrefixIndex is set, replace only the comment suffix starting at PrefixIndex,
+		// preserving any code before the comment (inline comment case).
+		idx := info.LineNumber - 1
+		origLine := lines[idx]
+		if info.PrefixIndex > 0 && info.PrefixIndex < len(origLine) {
+			lines[idx] = origLine[:info.PrefixIndex] + newCopyright
+		} else {
+			// PrefixIndex == 0 or out-of-range: replace the whole line
+			lines[idx] = newCopyright
+		}
 	}
 
 	// Write back
@@ -575,8 +615,64 @@ func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurr
 
 	// Evaluate which copyrights need updating
 	updates := evaluateCopyrightUpdates(
-		copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
+		filePath, copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
 	)
 
 	return len(updates) > 0, nil
+}
+
+// getFileContentExcludingCopyright returns the file content with copyright lines removed
+func getFileContentExcludingCopyright(filePath string) (string, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(string(content), "\n")
+	// Get all copyright info (line numbers)
+	copyrights, err := extractAllCopyrightInfo(filePath)
+	if err != nil {
+		return "", err
+	}
+	copyrightLineNums := make(map[int]struct{})
+	for _, info := range copyrights {
+		copyrightLineNums[info.LineNumber] = struct{}{}
+	}
+	var filtered []string
+	for i, line := range lines {
+		// Line numbers are 1-based in CopyrightInfo
+		if _, isCopyright := copyrightLineNums[i+1]; !isCopyright {
+			filtered = append(filtered, line)
+		}
+	}
+	return strings.Join(filtered, "\n"), nil
+}
+
+// getPreviousCommittedFileContent returns the previous committed version (HEAD~1) of the file (excluding copyright lines)
+func getPreviousCommittedFileContent(filePath string) (string, error) {
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return "", err
+	}
+	repoRoot, err := getRepoRoot(filepath.Dir(absPath))
+	if err != nil {
+		return "", err
+	}
+	relPath, err := filepath.Rel(repoRoot, absPath)
+	if err != nil {
+		return "", err
+	}
+	output, err := executeGitCommand(repoRoot, "show", "HEAD~1:"+relPath)
+	if err != nil {
+		return "", err
+	}
+	lines := strings.Split(string(output), "\n")
+	// Use parseCopyrightLine to check each line
+	var filtered []string
+	for i, line := range lines {
+		// parseCopyrightLine returns non-nil if line is a valid copyright
+		if parseCopyrightLine(line, i+1) == nil {
+			filtered = append(filtered, line)
+		}
+	}
+	return strings.Join(filtered, "\n"), nil
 }
