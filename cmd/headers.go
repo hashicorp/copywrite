@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/hashicorp/copywrite/addlicense"
 	"github.com/hashicorp/copywrite/licensecheck"
@@ -176,44 +179,83 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 	anyFileUpdated := false
 	var licensePath string
 
-	// Walk through all files in current directory
-	_ = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			return nil
-		}
+	// Producer/consumer: walk files (producer) and process them with a bounded
+	// worker pool (consumers). This preserves existing semantics while
+	// bounding concurrency and allowing the walk to run ahead of processors.
+	ch := make(chan string, 1000)
 
-		// Check if file should be ignored
-		if addlicense.FileMatches(path, ignoredPatterns) {
-			return nil
-		}
+	var wg sync.WaitGroup
+	var updatedCount64 int64
+	var anyFileUpdatedFlag int32
+	var mu sync.Mutex
 
-		// Capture LICENSE file path but skip processing it here - it will be handled separately
-		base := filepath.Base(path)
-		if strings.EqualFold(base, "LICENSE") || strings.EqualFold(base, "LICENSE.TXT") || strings.EqualFold(base, "LICENSE.MD") {
-			licensePath = path
-			return nil
-		}
+	workers := runtime.NumCPU() * 4
+	if workers < 2 {
+		workers = 2
+	}
 
-		// Try to update copyright in this file
-		if !dryRun {
-			updated, err := licensecheck.UpdateCopyrightHeader(path, targetHolder, configYear, false)
-			if err == nil && updated {
-				cmd.Printf("  %s\n", path)
-				updatedCount++
-				anyFileUpdated = true
+	// Start worker pool
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go func() {
+			defer wg.Done()
+			for path := range ch {
+				// capture base and skip LICENSE files here as well
+				base := filepath.Base(path)
+				if strings.EqualFold(base, "LICENSE") || strings.EqualFold(base, "LICENSE.TXT") || strings.EqualFold(base, "LICENSE.MD") {
+					mu.Lock()
+					if licensePath == "" {
+						licensePath = path
+					}
+					mu.Unlock()
+					continue
+				}
+
+				if !dryRun {
+					updated, err := licensecheck.UpdateCopyrightHeader(path, targetHolder, configYear, false)
+					if err == nil && updated {
+						cmd.Printf("  %s\n", path)
+						atomic.AddInt64(&updatedCount64, 1)
+						atomic.StoreInt32(&anyFileUpdatedFlag, 1)
+					}
+				} else {
+					needsUpdate, err := licensecheck.NeedsUpdate(path, targetHolder, configYear, false)
+					if err == nil && needsUpdate {
+						cmd.Printf("  %s\n", path)
+						atomic.AddInt64(&updatedCount64, 1)
+						atomic.StoreInt32(&anyFileUpdatedFlag, 1)
+					}
+				}
 			}
-		} else {
-			// In dry-run mode, check if update would happen
-			needsUpdate, err := licensecheck.NeedsUpdate(path, targetHolder, configYear, false)
-			if err == nil && needsUpdate {
-				cmd.Printf("  %s\n", path)
-				updatedCount++
-				anyFileUpdated = true
-			}
-		}
+		}()
+	}
 
-		return nil
-	})
+	// Producer: walk the tree and push files onto the channel
+	go func() {
+		_ = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+			if err != nil || info.IsDir() {
+				return nil
+			}
+
+			// Check if file should be ignored
+			if addlicense.FileMatches(path, ignoredPatterns) {
+				return nil
+			}
+
+			// Non-ignored file -> enqueue for processing. If channel is full,
+			// this will block until a worker consumes entries, which is fine.
+			ch <- path
+			return nil
+		})
+		close(ch)
+	}()
+
+	// wait for workers to finish
+	wg.Wait()
+
+	// finalize counts
+	updatedCount = int(atomic.LoadInt64(&updatedCount64))
+	anyFileUpdated = atomic.LoadInt32(&anyFileUpdatedFlag) != 0
 
 	return updatedCount, anyFileUpdated, licensePath
 }
