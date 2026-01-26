@@ -762,88 +762,6 @@ func TestUpdateCopyrightHeader_InlineCommentPreserved(t *testing.T) {
 	assert.Equal(t, expected, string(content))
 }
 
-/*
-	func TestCalculateYearUpdates(t *testing.T) {
-		currentYear := time.Now().Year()
-
-		tests := []struct {
-			name              string
-			info              *CopyrightInfo
-			configYear        int
-			lastCommitYear    int
-			forceCurrentYear  bool
-			expectUpdate      bool
-			expectedStartYear int
-			expectedEndYear   int
-		}{
-			{
-				name: "Old year needs update to current year",
-				info: &CopyrightInfo{
-					StartYear: 2020,
-					EndYear:   2020,
-				},
-				configYear:        2020,
-				lastCommitYear:    2025,
-				forceCurrentYear:  false,
-				expectUpdate:      true,
-				expectedStartYear: 2020,
-				expectedEndYear:   currentYear, // Uses currentYear, not lastCommitYear
-			},
-			{
-				name: "Already up to date with current year",
-				info: &CopyrightInfo{
-					StartYear: 2020,
-					EndYear:   currentYear,
-				},
-				configYear:        2020,
-				lastCommitYear:    2025,
-				forceCurrentYear:  false,
-				expectUpdate:      false,
-				expectedStartYear: 2020,
-				expectedEndYear:   currentYear,
-			},
-			{
-				name: "Force current year",
-				info: &CopyrightInfo{
-					StartYear: 2020,
-					EndYear:   2024,
-				},
-				configYear:        2020,
-				lastCommitYear:    2024,
-				forceCurrentYear:  true,
-				expectUpdate:      true,
-				expectedStartYear: 2020,
-				expectedEndYear:   currentYear,
-			},
-			{
-				name: "No years, use config year and current year",
-				info: &CopyrightInfo{
-					StartYear: 0,
-					EndYear:   0,
-				},
-				configYear:        2022,
-				lastCommitYear:    2025,
-				forceCurrentYear:  false,
-				expectUpdate:      true,
-				expectedStartYear: 2022,
-				expectedEndYear:   currentYear, // Uses currentYear
-			},
-		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				shouldUpdate, newStart, newEnd := calculateYearUpdates(
-					tt.info, tt.configYear, tt.lastCommitYear, currentYear, tt.forceCurrentYear,
-				)
-				assert.Equal(t, tt.expectUpdate, shouldUpdate)
-				if tt.expectUpdate {
-					assert.Equal(t, tt.expectedStartYear, newStart)
-					assert.Equal(t, tt.expectedEndYear, newEnd)
-				}
-			})
-		}
-	}
-*/
 func TestUpdateCopyrightHeader_WrongHolder(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.go")
@@ -865,4 +783,51 @@ package main
 	content, err := os.ReadFile(testFile)
 	require.NoError(t, err)
 	assert.Equal(t, fileContent, string(content))
+}
+
+func TestCalculateYearUpdates(t *testing.T) {
+	currentYear := time.Now().Year()
+
+	tempDir := t.TempDir()
+	tempFile := filepath.Join(tempDir, "dummy.go")
+	// write a minimal file so functions that read the file can operate
+	require.NoError(t, os.WriteFile(tempFile, []byte("package main\n"), 0644))
+
+	t.Run("Update start year when canonical differs", func(t *testing.T) {
+		info := &CopyrightInfo{StartYear: 2023, EndYear: 2023}
+		shouldUpdate, newStart, newEnd := calculateYearUpdates(
+			tempFile, info, 2020, 2023, currentYear, false,
+		)
+		assert.True(t, shouldUpdate)
+		assert.Equal(t, 2020, newStart)
+		assert.Equal(t, 2023, newEnd)
+	})
+
+	t.Run("No update when already current", func(t *testing.T) {
+		info := &CopyrightInfo{StartYear: 2020, EndYear: currentYear}
+		shouldUpdate, _, _ := calculateYearUpdates(
+			tempFile, info, 2020, currentYear, currentYear, false,
+		)
+		assert.False(t, shouldUpdate)
+	})
+
+	t.Run("Force current year updates end year", func(t *testing.T) {
+		info := &CopyrightInfo{StartYear: 2020, EndYear: currentYear - 1}
+		shouldUpdate, newStart, newEnd := calculateYearUpdates(
+			tempFile, info, 2020, currentYear-1, currentYear, true,
+		)
+		assert.True(t, shouldUpdate)
+		assert.Equal(t, 2020, newStart)
+		assert.Equal(t, currentYear, newEnd)
+	})
+
+	t.Run("No years uses config and force updates end", func(t *testing.T) {
+		info := &CopyrightInfo{StartYear: 0, EndYear: 0}
+		shouldUpdate, newStart, newEnd := calculateYearUpdates(
+			tempFile, info, 2022, 0, currentYear, true,
+		)
+		assert.True(t, shouldUpdate)
+		assert.Equal(t, 2022, newStart)
+		assert.Equal(t, currentYear, newEnd)
+	})
 }
