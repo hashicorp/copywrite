@@ -102,7 +102,7 @@ func TestParseCopyrightLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseCopyrightLine(tt.line, tt.lineNum)
+			result := parseCopyrightLine(tt.line, tt.lineNum, "file.go")
 
 			if tt.expectNil {
 				assert.Nil(t, result)
@@ -287,10 +287,11 @@ package main
 	err := os.WriteFile(testFile, []byte(fileContent), 0644)
 	require.NoError(t, err)
 
-	info, err := extractCopyrightInfo(testFile)
+	copyrights, err := extractAllCopyrightInfo(testFile)
 	require.NoError(t, err)
-	require.NotNil(t, info)
+	require.NotEmpty(t, copyrights)
 
+	info := copyrights[0]
 	assert.Equal(t, 1, info.LineNumber)
 	assert.Equal(t, "IBM Corp.", info.Holder)
 	assert.Equal(t, 2020, info.StartYear)
@@ -308,9 +309,9 @@ package main
 	err := os.WriteFile(testFile, []byte(fileContent), 0644)
 	require.NoError(t, err)
 
-	info, err := extractCopyrightInfo(testFile)
+	copyrights, err := extractAllCopyrightInfo(testFile)
 	require.NoError(t, err)
-	assert.Nil(t, info)
+	assert.Empty(t, copyrights)
 }
 
 func TestUpdateCopyrightHeader(t *testing.T) {
@@ -399,6 +400,16 @@ package main
 			}
 		})
 	}
+}
+
+func TestParseCopyrightLine_UnprefixedLicense(t *testing.T) {
+	line := "Copyright IBM Corp. 2018, 2025"
+	info := parseCopyrightLine(line, 1, "LICENSE")
+	require.NotNil(t, info)
+	assert.Equal(t, "IBM Corp.", info.Holder)
+	assert.Equal(t, 2018, info.StartYear)
+	assert.Equal(t, 2025, info.EndYear)
+	assert.Equal(t, "", info.Prefix)
 }
 
 func TestNeedsUpdate(t *testing.T) {
@@ -693,7 +704,7 @@ func TestParseCopyrightLine_StrictCopyrightCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseCopyrightLine(tt.line, 1)
+			result := parseCopyrightLine(tt.line, 1, "file.go")
 			if tt.expectNil {
 				assert.Nil(t, result, "Should return nil for non-copyright lines")
 			} else {
@@ -733,7 +744,7 @@ func TestExtractCommentPrefix_AllFormats(t *testing.T) {
 
 func TestParseCopyrightLine_InlineComment(t *testing.T) {
 	line := "var x := 1 // Copyright IBM Corp. 2023"
-	info := parseCopyrightLine(line, 1)
+	info := parseCopyrightLine(line, 1, "file.go")
 	require.NotNil(t, info)
 	assert.Equal(t, "IBM Corp.", info.Holder)
 	assert.Equal(t, 2023, info.StartYear)

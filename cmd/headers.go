@@ -137,13 +137,25 @@ config, see the "copywrite init" command.`,
 
 		// STEP 3: Add missing headers
 		gha.StartGroup("Adding missing copyright headers:")
-		err := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
+		var err error
+		// In dry-run mode, if updateExistingHeaders found files that would be
+		// updated (year bumps), treat that as an error so the command exits
+		// non-zero to indicate work would be performed.
+		if plan && updatedCount > 0 {
+			err = fmt.Errorf("[DRY RUN] %d file(s) would be updated with new copyright years", updatedCount)
+		}
+		runErr := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
+		if err != nil && runErr != nil {
+			err = fmt.Errorf("%v; %v", err, runErr)
+		} else if err == nil {
+			err = runErr
+		}
 		gha.EndGroup()
 
 		// STEP 4: Update LICENSE file if any files were modified (either updated or added headers)
 		// In plan mode: if addlicense found missing headers (returns error), assume files would be modified
 		// In normal mode: if addlicense succeeded, assume files were modified
-		if err != nil || (!plan && err == nil) {
+		if runErr != nil || (!plan && runErr == nil) {
 			anyFileUpdated = true
 		}
 

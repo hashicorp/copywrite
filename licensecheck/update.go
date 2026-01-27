@@ -46,7 +46,7 @@ func extractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
 
 		// Check if line contains "copyright"
 		if strings.Contains(strings.ToLower(line), "copyright") {
-			info := parseCopyrightLine(line, lineNum)
+			info := parseCopyrightLine(line, lineNum, filePath)
 			if info != nil {
 				copyrights = append(copyrights, info)
 			}
@@ -56,22 +56,9 @@ func extractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
 	return copyrights, scanner.Err()
 }
 
-// extractCopyrightInfo extracts the first copyright information from a file (for compatibility)
-func extractCopyrightInfo(filePath string) (*CopyrightInfo, error) {
-	copyrights, err := extractAllCopyrightInfo(filePath)
-	if err != nil {
-		return nil, err
-	}
-	if len(copyrights) == 0 {
-		return nil, nil
-	}
-	return copyrights[0], nil
-}
-
 // parseCopyrightLine extracts copyright details from a line
-func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
-	// Find a comment prefix anywhere in the line (handles inline comments)
-
+func parseCopyrightLine(line string, lineNum int, filePath string) *CopyrightInfo {
+	// 1. Determine the prefix and content source
 	bestIdx := -1
 	bestPrefix := ""
 	for _, p := range commentPrefixes {
@@ -83,35 +70,51 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 		}
 	}
 
-	if bestIdx == -1 {
-		return nil
-	}
+	var prefix string
+	var prefixStart int
+	var content string
 
-	// Include contiguous spaces/tabs immediately before the prefix as part of the prefix index
-	prefixStart := bestIdx
-	for i := bestIdx - 1; i >= 0; i-- {
-		if line[i] == ' ' || line[i] == '\t' {
-			prefixStart = i
+	if bestIdx != -1 {
+		// Case A: Comment prefix found
+		// Include contiguous spaces/tabs immediately before the prefix as part of the prefix index
+		prefixStart = bestIdx
+		for i := bestIdx - 1; i >= 0; i-- {
+			if line[i] == ' ' || line[i] == '\t' {
+				prefixStart = i
+			} else {
+				break
+			}
+		}
+
+		// Calculate bounds
+		prefixEnd := bestIdx + len(bestPrefix)
+		prefix = line[prefixStart:prefixEnd]
+
+		if prefixEnd < len(line) {
+			content = line[prefixEnd:]
+		}
+	} else {
+		// Case B: No prefix found (check if it is a LICENSE file)
+		base := strings.ToLower(filepath.Base(filePath))
+		if strings.HasPrefix(base, "license") {
+			// Treat entire line as content with empty prefix
+			prefix = ""
+			prefixStart = 0
+			content = line
 		} else {
-			break
+			// No prefix and not a license file -> Ignore
+			return nil
 		}
 	}
 
-	prefix := line[prefixStart : bestIdx+len(bestPrefix)]
-
-	// Get the content after the prefix occurrence
-	contentStart := bestIdx + len(bestPrefix)
-	if contentStart >= len(line) {
-		return nil
-	}
-	content := line[contentStart:]
-
-	// Must start with "copyright" (case-insensitive) - not just contain it anywhere
+	// Validate content starts with "Copyright"
+	// Normalize content for the check
 	content = strings.TrimSpace(content)
 	if !regexp.MustCompile(`(?i)^copyright\b`).MatchString(content) {
 		return nil
 	}
 
+	// Initialize the Info struct
 	info := &CopyrightInfo{
 		LineNumber:   lineNum,
 		OriginalLine: line,
@@ -119,6 +122,7 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 		PrefixIndex:  prefixStart,
 	}
 
+	// Parse the Copyright String (Unified Logic)
 	// Remove "Copyright" and optional (c) from the beginning
 	re := regexp.MustCompile(`(?i)^copyright\s*(?:\(c\))?\s*`)
 	afterCopyright := re.ReplaceAllString(content, "")
@@ -128,23 +132,21 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 	yearPattern := regexp.MustCompile(`\b(\d{4})\b`)
 	yearMatches := yearPattern.FindAllStringIndex(afterCopyright, -1)
 
+	// If no years found, the whole string is the holder
 	if len(yearMatches) == 0 {
-		// No year found, everything is the holder
 		info.Holder = strings.TrimSpace(afterCopyright)
 		return info
 	}
 
 	// Find the last occurrence of years (which should be the copyright years)
-	// Look for patterns like "YYYY" or "YYYY, YYYY" or "YYYY-YYYY"
 	lastYearIdx := yearMatches[len(yearMatches)-1]
 
 	// Extract years - check if there's a year before the last one (start year)
 	if len(yearMatches) >= 2 {
-		// Check if the previous year is close to the last year (within 20 chars)
 		prevYearIdx := yearMatches[len(yearMatches)-2]
 		between := afterCopyright[prevYearIdx[1]:lastYearIdx[0]]
 
-		// If only separators between them, treat as start and end year
+		// If only separators (-, ) between them, treat as start and end year
 		if strings.TrimSpace(strings.Trim(between, "-, ")) == "" {
 			startYearStr := afterCopyright[prevYearIdx[0]:prevYearIdx[1]]
 			if year, err := strconv.Atoi(startYearStr); err == nil {
@@ -153,7 +155,6 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 		}
 	}
 
-	// Extract the last year (end year or only year)
 	endYearStr := afterCopyright[lastYearIdx[0]:lastYearIdx[1]]
 	if year, err := strconv.Atoi(endYearStr); err == nil {
 		info.EndYear = year
@@ -162,7 +163,8 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 		}
 	}
 
-	// Everything before the first year (or before the pair of years) is the holder
+	// Determine where the Holder name ends
+	// Usually, everything before the first recognized year (or year pair) is the holder
 	holderEndIdx := yearMatches[0][0]
 	if len(yearMatches) >= 2 && info.StartYear != 0 {
 		holderEndIdx = yearMatches[len(yearMatches)-2][0]
@@ -171,7 +173,7 @@ func parseCopyrightLine(line string, lineNum int) *CopyrightInfo {
 	holder := strings.TrimSpace(afterCopyright[:holderEndIdx])
 	info.Holder = holder
 
-	// Everything after the last year is trailing text - preserve it exactly
+	// Everything after the last year is trailing text
 	if lastYearIdx[1] < len(afterCopyright) {
 		trailing := afterCopyright[lastYearIdx[1]:]
 		if trailing != "" {
@@ -670,7 +672,7 @@ func getPreviousCommittedFileContent(filePath string) (string, error) {
 	var filtered []string
 	for i, line := range lines {
 		// parseCopyrightLine returns non-nil if line is a valid copyright
-		if parseCopyrightLine(line, i+1) == nil {
+		if parseCopyrightLine(line, i+1, filePath) == nil {
 			filtered = append(filtered, line)
 		}
 	}
