@@ -3,8 +3,11 @@
 This repo provides utilities for managing copyright headers and license files
 across many repos at scale.
 
-You can use it to add or validate copyright headers on source code files, add a
-LICENSE file to a repo, report on what licenses repos are using, and more.
+Features:
+- Add or validate copyright headers on source code files
+- Add and/or manage LICENSE files with git-aware copyright year detection
+- Report on licenses used across multiple repositories
+- Automate compliance checks in CI/CD pipelines
 
 ## Getting Started
 
@@ -33,7 +36,7 @@ Usage:
   copywrite [command]
 
 Common Commands:
-  headers     Adds missing copyright headers to all source code files
+  headers     Adds missing copyright headers and updates existing headers' year information.
   init        Generates a .copywrite.hcl config for a new project
   license     Validates that a LICENSE file is present and remediates any issues if found
 
@@ -62,8 +65,18 @@ scan all files in your repo and copyright headers to any that are missing:
 copywrite headers --spdx "MPL-2.0"
 ```
 
-You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined
-[here](#config-structure).
+The `copywrite license` command validates and manages LICENSE files with git-aware copyright years:
+
+```sh
+copywrite license --spdx "MPL-2.0"
+```
+
+**Copyright Year Behavior:**
+- **Start Year**: Auto-detected from config file and if not found defaults to repository's first commit
+- **End Year**: Set to current year when an update is triggered (git history only determines if update is needed)
+- **Update Trigger**: Git detects if source code file was modified since the copyright end year
+
+You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined [here](#config-structure).
 
 ### `--plan` Flag
 
@@ -71,6 +84,24 @@ Both the `headers` and `license` commands allow you to use a `--plan` flag, whic
 performs a dry-run and will outline what changes would be made. This flag also
 returns a non-zero exit code if any changes are needed. As such, it can be used
 to validate if a repo is in compliance or not.
+
+## Technical Details
+
+### Copyright Year Logic
+
+**Source File Headers:**
+- End year: Set to current year when file's source code is modified
+- Git history determines if update is needed (compares file's last commit year to copyright end year)
+- When triggered, end year updates to current year
+- Ignores copyright header updates made to a file as it is not source code change.
+
+**LICENSE Files:**
+- End year: Set to current year when any project file is modified
+- Git history determines if update is needed (compares repo's last commit year to copyright end year)
+- When triggered, end year updates to current year
+- Preserves historical accuracy for archived projects (no forced updates)
+
+**Key Distinction:** Git history is used as a trigger to determine *whether* an update is needed, but the actual end year value is always set to the current year when an update occurs.
 
 ## Config Structure
 
@@ -99,8 +130,8 @@ project {
 
   # (OPTIONAL) Represents the year that the project initially began
   # This is used as the starting year in copyright statements
-  # If set and different from current year, headers will show: "copyright_year, current_year"
-  # If set and same as current year, headers will show: "current_year"
+  # If set and different from current year, headers will show: "copyright_year, year-2"
+  # If set and same as year-2, headers will show: "copyright_year"
   # If not set (0), the tool will auto-detect from git history (first commit year)
   # If auto-detection fails, it will fallback to current year only
   # Default: 0 (auto-detect)

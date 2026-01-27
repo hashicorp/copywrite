@@ -280,7 +280,7 @@ func walk(ch chan<- *file, start string, logger *log.Logger) error {
 		if fi.IsDir() {
 			return nil
 		}
-		if fileMatches(path, ignorePatterns) {
+		if FileMatches(path, ignorePatterns) {
 			// The [DEBUG] level is inferred by go-hclog as a debug statement
 			logger.Printf("[DEBUG] skipping: %s", path)
 			return nil
@@ -290,9 +290,9 @@ func walk(ch chan<- *file, start string, logger *log.Logger) error {
 	})
 }
 
-// fileMatches determines if path matches one of the provided file patterns.
+// FileMatches determines if path matches one of the provided file patterns.
 // Patterns are assumed to be valid.
-func fileMatches(path string, patterns []string) bool {
+func FileMatches(path string, patterns []string) bool {
 	for _, p := range patterns {
 
 		if runtime.GOOS == "windows" {

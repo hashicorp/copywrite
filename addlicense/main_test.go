@@ -471,7 +471,7 @@ func TestFileMatches(t *testing.T) {
 
 	for _, tt := range tests {
 		patterns := []string{tt.pattern}
-		if got := fileMatches(tt.path, patterns); got != tt.wantMatch {
+		if got := FileMatches(tt.path, patterns); got != tt.wantMatch {
 			t.Errorf("fileMatches(%q, %q) returned %v, want %v", tt.path, patterns, got, tt.wantMatch)
 		}
 	}
