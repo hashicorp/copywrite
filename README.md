@@ -74,7 +74,7 @@ copywrite license --spdx "MPL-2.0"
 **Copyright Year Behavior:**
 - **Start Year**: Auto-detected from config file and if not found defaults to repository's first commit
 - **End Year**: Set to current year when an update is triggered (git history only determines if update is needed)
-- **Update Trigger**: Git detects if file was modified since the copyright end year
+- **Update Trigger**: Git detects if source code file was modified since the copyright end year
 
 You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined [here](#config-structure).
 
@@ -90,9 +90,10 @@ to validate if a repo is in compliance or not.
 ### Copyright Year Logic
 
 **Source File Headers:**
-- End year: Set to current year when file is modified
+- End year: Set to current year when file's source code is modified
 - Git history determines if update is needed (compares file's last commit year to copyright end year)
 - When triggered, end year updates to current year
+- Ignores copyright header updates made to a file as it is not source code change.
 
 **LICENSE Files:**
 - End year: Set to current year when any project file is modified
