@@ -799,15 +799,10 @@ package main
 func TestCalculateYearUpdates(t *testing.T) {
 	currentYear := time.Now().Year()
 
-	tempDir := t.TempDir()
-	tempFile := filepath.Join(tempDir, "dummy.go")
-	// write a minimal file so functions that read the file can operate
-	require.NoError(t, os.WriteFile(tempFile, []byte("package main\n"), 0644))
-
 	t.Run("Update start year when canonical differs", func(t *testing.T) {
 		info := &CopyrightInfo{StartYear: 2023, EndYear: 2023}
 		shouldUpdate, newStart, newEnd := calculateYearUpdates(
-			tempFile, info, 2020, 2023, currentYear, false,
+			info, 2020, 2023, currentYear, false,
 		)
 		assert.True(t, shouldUpdate)
 		assert.Equal(t, 2020, newStart)
@@ -817,7 +812,7 @@ func TestCalculateYearUpdates(t *testing.T) {
 	t.Run("No update when already current", func(t *testing.T) {
 		info := &CopyrightInfo{StartYear: 2020, EndYear: currentYear}
 		shouldUpdate, _, _ := calculateYearUpdates(
-			tempFile, info, 2020, currentYear, currentYear, false,
+			info, 2020, currentYear, currentYear, false,
 		)
 		assert.False(t, shouldUpdate)
 	})
@@ -825,7 +820,7 @@ func TestCalculateYearUpdates(t *testing.T) {
 	t.Run("Force current year updates end year", func(t *testing.T) {
 		info := &CopyrightInfo{StartYear: 2020, EndYear: currentYear - 1}
 		shouldUpdate, newStart, newEnd := calculateYearUpdates(
-			tempFile, info, 2020, currentYear-1, currentYear, true,
+			info, 2020, currentYear-1, currentYear, true,
 		)
 		assert.True(t, shouldUpdate)
 		assert.Equal(t, 2020, newStart)
@@ -835,7 +830,7 @@ func TestCalculateYearUpdates(t *testing.T) {
 	t.Run("No years uses config and force updates end", func(t *testing.T) {
 		info := &CopyrightInfo{StartYear: 0, EndYear: 0}
 		shouldUpdate, newStart, newEnd := calculateYearUpdates(
-			tempFile, info, 2022, 0, currentYear, true,
+			info, 2022, 0, currentYear, true,
 		)
 		assert.True(t, shouldUpdate)
 		assert.Equal(t, 2022, newStart)

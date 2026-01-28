@@ -323,7 +323,6 @@ func parseYearFromGitOutput(output []byte, useFirstLine bool) (int, error) {
 // calculateYearUpdates determines if a copyright needs updating and calculates new years
 // Returns: (shouldUpdate bool, newStartYear int, newEndYear int)
 func calculateYearUpdates(
-	filePath string,
 	info *CopyrightInfo,
 	canonicalStartYear int,
 	lastCommitYear int,
@@ -341,16 +340,10 @@ func calculateYearUpdates(
 	}
 
 	// Condition 2: Only update end year if file was modified after the copyright end year, or forceCurrentYear is true
-	// But only if there are non-copyright changes in the file
 	if lastCommitYear > info.EndYear {
-		// Check for non-copyright changes between HEAD and HEAD~1
-		currentContent, err1 := getFileContentExcludingCopyright(filePath)
-		prevCommittedContent, err2 := getPreviousCommittedFileContent(filePath)
-		if err1 == nil && err2 == nil && currentContent != prevCommittedContent {
-			if info.EndYear < currentYear {
-				newEndYear = currentYear
-				shouldUpdate = true
-			}
+		if info.EndYear < currentYear {
+			newEndYear = currentYear
+			shouldUpdate = true
 		}
 	}
 
@@ -441,7 +434,6 @@ func GetRepoLastCommitYear(workingDir string) (int, error) {
 // evaluateCopyrightUpdates evaluates all copyrights in a file and returns which ones need updating
 // This is shared logic between UpdateCopyrightHeader and NeedsUpdate
 func evaluateCopyrightUpdates(
-	filePath string,
 	copyrights []*CopyrightInfo,
 	targetHolder string,
 	configYear int,
@@ -474,7 +466,7 @@ func evaluateCopyrightUpdates(
 		}
 
 		shouldUpdate, newStartYear, newEndYear := calculateYearUpdates(
-			filePath, info, canonicalStartYear, lastCommitYear, currentYear, forceCurrentYear,
+			info, canonicalStartYear, lastCommitYear, currentYear, forceCurrentYear,
 		)
 
 		if shouldUpdate {
@@ -530,7 +522,7 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 
 	// Evaluate which copyrights need updating
 	updates := evaluateCopyrightUpdates(
-		filePath, copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
+		copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
 	)
 
 	if len(updates) == 0 {
@@ -617,64 +609,8 @@ func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurr
 
 	// Evaluate which copyrights need updating
 	updates := evaluateCopyrightUpdates(
-		filePath, copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
+		copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
 	)
 
 	return len(updates) > 0, nil
-}
-
-// getFileContentExcludingCopyright returns the file content with copyright lines removed
-func getFileContentExcludingCopyright(filePath string) (string, error) {
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", err
-	}
-	lines := strings.Split(string(content), "\n")
-	// Get all copyright info (line numbers)
-	copyrights, err := extractAllCopyrightInfo(filePath)
-	if err != nil {
-		return "", err
-	}
-	copyrightLineNums := make(map[int]struct{})
-	for _, info := range copyrights {
-		copyrightLineNums[info.LineNumber] = struct{}{}
-	}
-	var filtered []string
-	for i, line := range lines {
-		// Line numbers are 1-based in CopyrightInfo
-		if _, isCopyright := copyrightLineNums[i+1]; !isCopyright {
-			filtered = append(filtered, line)
-		}
-	}
-	return strings.Join(filtered, "\n"), nil
-}
-
-// getPreviousCommittedFileContent returns the previous committed version (HEAD~1) of the file (excluding copyright lines)
-func getPreviousCommittedFileContent(filePath string) (string, error) {
-	absPath, err := filepath.Abs(filePath)
-	if err != nil {
-		return "", err
-	}
-	repoRoot, err := getRepoRoot(filepath.Dir(absPath))
-	if err != nil {
-		return "", err
-	}
-	relPath, err := filepath.Rel(repoRoot, absPath)
-	if err != nil {
-		return "", err
-	}
-	output, err := executeGitCommand(repoRoot, "show", "HEAD~1:"+relPath)
-	if err != nil {
-		return "", err
-	}
-	lines := strings.Split(string(output), "\n")
-	// Use parseCopyrightLine to check each line
-	var filtered []string
-	for i, line := range lines {
-		// parseCopyrightLine returns non-nil if line is a valid copyright
-		if parseCopyrightLine(line, i+1, filePath) == nil {
-			filtered = append(filtered, line)
-		}
-	}
-	return strings.Join(filtered, "\n"), nil
 }
