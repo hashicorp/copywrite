@@ -93,7 +93,6 @@ to validate if a repo is in compliance or not.
 - End year: Set to current year when file's source code is modified
 - Git history determines if update is needed (compares file's last commit year to copyright end year)
 - When triggered, end year updates to current year
-- Ignores copyright header updates made to a file as it is not source code change.
 
 **LICENSE Files:**
 - End year: Set to current year when any project file is modified
