@@ -254,13 +254,28 @@ func processFile(f *file, t *template.Template, license LicenseData, checkonly b
 			return errors.New("missing license header")
 		}
 	} else {
+		// First, try to add a license if missing
 		modified, err := addLicense(f.path, f.mode, t, license)
 		if err != nil {
 			logger.Printf("%s: %v", f.path, err)
 			return err
 		}
-		if verbose && modified {
-			logger.Printf("%s modified", f.path)
+
+		// If file wasn't modified (already had a license), try to update the holder
+		if !modified {
+			updated, err := updateLicenseHolder(f.path, f.mode, license)
+			if err != nil {
+				logger.Printf("%s: %v", f.path, err)
+				return err
+			}
+			if updated {
+				modified = true
+				if verbose {
+					logger.Printf("%s modified (copyright holder updated)", f.path)
+				}
+			}
+		} else if verbose {
+			logger.Printf("%s modified (license header added)", f.path)
 		}
 	}
 	return nil
@@ -338,6 +353,75 @@ func addLicense(path string, fmode os.FileMode, tmpl *template.Template, data Li
 	}
 	b = append(lic, b...)
 	return true, os.WriteFile(path, b, fmode)
+}
+
+// updateLicenseHolder checks if a file contains old copyright holders
+// (like "HashiCorp, Inc.") and updates them to the new holder while
+// preserving years and other header information.
+// Returns true if the file was updated.
+func updateLicenseHolder(path string, fmode os.FileMode, newData LicenseData) (bool, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+
+	// Define old holder patterns to detect and replace
+	oldHolders := []string{
+		"HashiCorp, Inc.",
+		"HashiCorp Inc\\.?", // Match "HashiCorp Inc" with optional period
+		"HashiCorp",
+	}
+
+	updated := b
+	changed := false
+
+	for _, oldHolder := range oldHolders {
+		// Build regex to match various copyright formats:
+		// - "Copyright (c) HashiCorp, Inc. 2023"
+		// - "Copyright 2023 HashiCorp, Inc."
+		// - "Copyright HashiCorp, Inc. 2023, 2025"
+		// - "Copyright (c) 2023 HashiCorp, Inc."
+		// - "<!-- Copyright (c) HashiCorp, Inc. 2023 -->"
+		pattern := regexp.MustCompile(
+			`(?im)^(\s*(?://|#|/\*+|\*|<!--)\s*)` +      // Comment prefix (group 1)
+				`(Copyright\s*(?:\(c\)\s*)?)` +               // "Copyright" with optional (c) (group 2)
+				`(?:(\d{4}(?:,\s*\d{4})?)\s+)?` +             // Optional years before holder (group 3)
+				`(` + oldHolder + `)` +                        // Old holder name (group 4) - now not using QuoteMeta for regex patterns
+				`(?:\s+(\d{4}(?:,\s*\d{4})?))?` +             // Optional years after holder (group 5)
+				`(\s*(?:-->)?\s*)$`,                           // Trailing whitespace and optional HTML comment close (group 6)
+		)
+
+		// Replace with new format: "Copyright IBM Corp. YYYY, YYYY"
+		updated = pattern.ReplaceAllFunc(updated, func(match []byte) []byte {
+			// Extract the comment prefix from the match
+			submatch := pattern.FindSubmatch(match)
+			if submatch == nil {
+				return match
+			}
+
+			commentPrefix := string(submatch[1])
+			trailingSpace := string(submatch[6])
+
+			// Build new copyright line
+			newLine := commentPrefix + "Copyright"
+			if newData.Holder != "" {
+				newLine += " " + newData.Holder
+			}
+			if newData.Year != "" {
+				newLine += " " + newData.Year
+			}
+			newLine += trailingSpace
+
+			changed = true
+			return []byte(newLine)
+		})
+	}
+
+	if !changed {
+		return false, nil
+	}
+
+	return true, os.WriteFile(path, updated, fmode)
 }
 
 // fileHasLicense reports whether the file at path contains a license header.
