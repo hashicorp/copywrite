@@ -270,12 +270,10 @@ func processFile(f *file, t *template.Template, license LicenseData, checkonly b
 			}
 			if updated {
 				modified = true
-				if verbose {
-					logger.Printf("%s modified (copyright holder updated)", f.path)
-				}
+				logger.Printf("%s (copyright holder updated)", f.path)
 			}
-		} else if verbose {
-			logger.Printf("%s modified (license header added)", f.path)
+		} else {
+			logger.Printf("%s (license header added)", f.path)
 		}
 	}
 	return nil
@@ -383,12 +381,12 @@ func updateLicenseHolder(path string, fmode os.FileMode, newData LicenseData) (b
 		// - "Copyright (c) 2023 HashiCorp, Inc."
 		// - "<!-- Copyright (c) HashiCorp, Inc. 2023 -->"
 		pattern := regexp.MustCompile(
-			`(?im)^(\s*(?://|#|/\*+|\*|<!--)\s*)` +      // Comment prefix (group 1)
-				`(Copyright\s*(?:\(c\)\s*)?)` +               // "Copyright" with optional (c) (group 2)
-				`(?:(\d{4}(?:,\s*\d{4})?)\s+)?` +             // Optional years before holder (group 3)
-				`(` + oldHolder + `)` +                        // Old holder name (group 4) - now not using QuoteMeta for regex patterns
-				`(?:\s+(\d{4}(?:,\s*\d{4})?))?` +             // Optional years after holder (group 5)
-				`(\s*(?:-->)?\s*)$`,                           // Trailing whitespace and optional HTML comment close (group 6)
+			`(?im)^(\s*(?://|#|/\*+|\*|<!--)\s*)` + // Comment prefix (group 1)
+				`(Copyright\s*(?:\(c\)\s*)?)` + // "Copyright" with optional (c) (group 2)
+				`(?:(\d{4}(?:,\s*\d{4})?)\s+)?` + // Optional years before holder (group 3)
+				`(` + oldHolder + `)` + // Old holder name (group 4) - now not using QuoteMeta for regex patterns
+				`(?:\s+(\d{4}(?:,\s*\d{4})?))?` + // Optional years after holder (group 5)
+				`(\s*(?:-->)?\s*)$`, // Trailing whitespace and optional HTML comment close (group 6)
 		)
 
 		// Replace with new format: "Copyright IBM Corp. YYYY, YYYY"
