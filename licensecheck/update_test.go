@@ -4,6 +4,7 @@
 package licensecheck
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -95,6 +96,20 @@ func TestParseCopyrightLine(t *testing.T) {
 				StartYear:    0,
 				EndYear:      0,
 				Prefix:       "// ",
+				TrailingText: "",
+			},
+		},
+		{
+			name:    "Handlebars indented copyright",
+			line:    "  Copyright IBM Corp. 2021, 2025",
+			lineNum: 2,
+			expectedInfo: &CopyrightInfo{
+				LineNumber:   2,
+				OriginalLine: "  Copyright IBM Corp. 2021, 2025",
+				Holder:       "IBM Corp.",
+				StartYear:    2021,
+				EndYear:      2025,
+				Prefix:       "  ",
 				TrailingText: "",
 			},
 		},
@@ -728,6 +743,7 @@ func TestExtractCommentPrefix_AllFormats(t *testing.T) {
 		{"Erlang style", "% Copyright", "% "},
 		{"Haskell/SQL style", "-- Copyright", "-- "},
 		{"Handlebars style", "{{! Copyright", "{{! "},
+		{"Handlebars indented content", "  Copyright", "  "},
 		{"OCaml style", "(** Copyright", "(** "},
 		{"EJS template style", "<%/* Copyright", "<%/* "},
 		{"JSDoc style", "/** Copyright", "/** "},
@@ -836,4 +852,57 @@ func TestCalculateYearUpdates(t *testing.T) {
 		assert.Equal(t, 2022, newStart)
 		assert.Equal(t, currentYear, newEnd)
 	})
+}
+
+func TestUpdateCopyrightHeader_HandlebarsFiles(t *testing.T) {
+	currentYear := time.Now().Year()
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.hbs")
+
+	// Test .hbs file with multi-line comment format
+	initialContent := `{{!
+  Copyright IBM Corp. 2021, 2025
+  SPDX-License-Identifier: MPL-2.0
+}}
+
+<html>
+<body>
+  <h1>{{title}}</h1>
+</body>
+</html>`
+
+	err := os.WriteFile(testFile, []byte(initialContent), 0644)
+	require.NoError(t, err)
+
+	// Test that it needs an update
+	needsUpdate, err := NeedsUpdate(testFile, "IBM Corp.", 2021, true)
+	require.NoError(t, err)
+	assert.True(t, needsUpdate, "Should detect that .hbs file needs copyright update")
+
+	// Test updating the copyright header
+	modified, err := UpdateCopyrightHeader(testFile, "IBM Corp.", 2021, true)
+	require.NoError(t, err)
+	assert.True(t, modified, "Should successfully update .hbs file copyright")
+
+	// Verify the content was updated correctly
+	content, err := os.ReadFile(testFile)
+	require.NoError(t, err)
+
+	expectedContent := fmt.Sprintf(`{{!
+  Copyright IBM Corp. 2021, %d
+  SPDX-License-Identifier: MPL-2.0
+}}
+
+<html>
+<body>
+  <h1>{{title}}</h1>
+</body>
+</html>`, currentYear)
+
+	assert.Equal(t, expectedContent, string(content))
+
+	// Test that it doesn't need another update
+	needsUpdate2, err := NeedsUpdate(testFile, "IBM Corp.", 2021, true)
+	require.NoError(t, err)
+	assert.False(t, needsUpdate2, "Should not need another update after being updated to current year")
 }
