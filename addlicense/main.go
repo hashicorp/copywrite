@@ -269,7 +269,7 @@ func processFile(f *file, t *template.Template, license LicenseData, checkonly b
 				return err
 			}
 			if updated {
-				modified = true
+
 				logger.Printf("%s (copyright holder updated)", f.path)
 			}
 		} else {
