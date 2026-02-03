@@ -664,7 +664,9 @@ func TestWouldUpdateLicenseHolder(t *testing.T) {
 			if _, err := tmpfile.Write([]byte(tt.content)); err != nil {
 				t.Fatal(err)
 			}
-			tmpfile.Close()
+			if err := tmpfile.Close(); err != nil {
+				t.Fatal(err)
+			}
 
 			got, err := wouldUpdateLicenseHolder(tmpfile.Name(), tt.license)
 			if err != nil {
