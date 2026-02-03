@@ -615,3 +615,64 @@ func TestFileMatches(t *testing.T) {
 		}
 	}
 }
+
+func TestWouldUpdateLicenseHolder(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		license  LicenseData
+		expected bool
+	}{
+		{
+			name:     "Would update HashiCorp, Inc.",
+			content:  "// Copyright (c) 2023 HashiCorp, Inc.\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: true,
+		},
+		{
+			name:     "Would update HashiCorp Inc without comma",
+			content:  "// Copyright 2023 HashiCorp Inc\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: true,
+		},
+		{
+			name:     "Would not update different holder",
+			content:  "// Copyright 2023 Google LLC\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: false,
+		},
+		{
+			name:     "Would not update no copyright",
+			content:  "// This is just a comment\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpfile, err := os.CreateTemp("", "test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Remove(tmpfile.Name()); err != nil {
+					t.Logf("Failed to remove temp file: %v", err)
+				}
+			}()
+
+			if _, err := tmpfile.Write([]byte(tt.content)); err != nil {
+				t.Fatal(err)
+			}
+			tmpfile.Close()
+
+			got, err := wouldUpdateLicenseHolder(tmpfile.Name(), tt.license)
+			if err != nil {
+				t.Fatalf("wouldUpdateLicenseHolder returned error: %v", err)
+			}
+			if got != tt.expected {
+				t.Errorf("wouldUpdateLicenseHolder() = %v, expected %v", got, tt.expected)
+			}
+		})
+	}
+}

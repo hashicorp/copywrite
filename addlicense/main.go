@@ -253,6 +253,16 @@ func processFile(f *file, t *template.Template, license LicenseData, checkonly b
 			logger.Printf("%s\n", f.path)
 			return errors.New("missing license header")
 		}
+		// Also check if existing files would need copyright holder updates
+		wouldUpdate, err := wouldUpdateLicenseHolder(f.path, license)
+		if err != nil {
+			logger.Printf("%s: %v", f.path, err)
+			return err
+		}
+		if wouldUpdate {
+			logger.Printf("%s (would update copyright holder)\n", f.path)
+			return errors.New("copyright holder would be updated")
+		}
 	} else {
 		// First, try to add a license if missing
 		modified, err := addLicense(f.path, f.mode, t, license)
@@ -420,6 +430,40 @@ func updateLicenseHolder(path string, fmode os.FileMode, newData LicenseData) (b
 	}
 
 	return true, os.WriteFile(path, updated, fmode)
+}
+
+// wouldUpdateLicenseHolder checks if a file would need copyright holder updates
+// without actually modifying the file. Used for plan/dry-run mode.
+func wouldUpdateLicenseHolder(path string, newData LicenseData) (bool, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+
+	// Define old holder patterns to detect
+	oldHolders := []string{
+		"HashiCorp, Inc.",
+		"HashiCorp Inc\\.?", // Match "HashiCorp Inc" with optional period
+		"HashiCorp",
+	}
+
+	for _, oldHolder := range oldHolders {
+		// Build regex to match various copyright formats
+		pattern := regexp.MustCompile(
+			`(?im)^(\s*(?://|#|/\*+|\*|<!--)\s*)` + // Comment prefix (group 1)
+				`(Copyright\s*(?:\(c\)\s*)?)` + // "Copyright" with optional (c) (group 2)
+				`(?:(\d{4}(?:,\s*\d{4})?)\s+)?` + // Optional years before holder (group 3)
+				`(` + oldHolder + `)` + // Old holder name (group 4)
+				`(?:\s+(\d{4}(?:,\s*\d{4})?))?` + // Optional years after holder (group 5)
+				`(\s*(?:-->)?\s*)$`, // Trailing whitespace and optional HTML comment close (group 6)
+		)
+
+		if pattern.Match(b) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // fileHasLicense reports whether the file at path contains a license header.
