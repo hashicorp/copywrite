@@ -182,7 +182,7 @@ func init() {
 // updateExistingHeaders walks through files and updates copyright headers based on config and git history
 // Returns the count of updated files, a boolean indicating if any file was updated, and the LICENSE file path (if found)
 func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun bool) (int, bool, string) {
-	licensecheck.InitializeGitCache(".")
+	_ = licensecheck.InitializeGitCache(".")
 	targetHolder := conf.Project.CopyrightHolder
 	if targetHolder == "" {
 		targetHolder = "IBM Corp."
