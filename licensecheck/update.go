@@ -414,42 +414,42 @@ func GetRepoRoot(workingDir string) (string, error) {
 // - The year of the first commit in the repository (or 0 if not found)
 // - An error if the git command fails
 func buildRepositoryCache(repoRoot string) (map[string]int, int, error) {
-    cmd := exec.Command("git", "log", "--format=format:%ad", "--date=format:%Y", "--name-only")
-    cmd.Dir = repoRoot
-    output, err := cmd.Output()
-    if err != nil {
-        return nil, 0, err
-    }
+	cmd := exec.Command("git", "log", "--format=format:%ad", "--date=format:%Y", "--name-only")
+	cmd.Dir = repoRoot
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, 0, err
+	}
 
-    result := make(map[string]int)
-    var currentYear int
-		firstYear := 0
-    
-    for _, line := range strings.Split(string(output), "\n") {
-        line = strings.TrimSpace(line)
-        if line == "" {
-            continue
-        }
-        // If it's a 4-digit year
-        if year, err := strconv.Atoi(line); err == nil && year > 1900 && year < 2100 {
-            currentYear = year
-						if year < firstYear || firstYear == 0 {
-							firstYear = year
-						}
-        } else if currentYear > 0 {
-            // It's a filename - only store first occurrence (most recent)
-            if _, exists := result[line]; !exists {
-                result[line] = currentYear
-            }
-        }
-    }
-    return result, firstYear, nil
+	result := make(map[string]int)
+	var currentYear int
+	firstYear := 0
+
+	for _, line := range strings.Split(string(output), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// If it's a 4-digit year
+		if year, err := strconv.Atoi(line); err == nil && year > 1900 && year < 2100 {
+			currentYear = year
+			if year < firstYear || firstYear == 0 {
+				firstYear = year
+			}
+		} else if currentYear > 0 {
+			// It's a filename - only store first occurrence (most recent)
+			if _, exists := result[line]; !exists {
+				result[line] = currentYear
+			}
+		}
+	}
+	return result, firstYear, nil
 }
 
 var (
-	lastCommitYearsCache map[string]int
-	firstCommitYearCached  = 0
-	once sync.Once
+	lastCommitYearsCache  map[string]int
+	firstCommitYearCached = 0
+	once                  sync.Once
 )
 
 func InitializeGitCache(repoRoot string) error {
@@ -461,7 +461,7 @@ func InitializeGitCache(repoRoot string) error {
 			lastCommitYearsCache = cache
 			firstCommitYearCached = firstYear
 		}
-	});
+	})
 	return nil
 }
 
