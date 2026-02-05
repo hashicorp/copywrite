@@ -17,11 +17,13 @@ import (
 
 func TestParseCopyrightLine(t *testing.T) {
 	tests := []struct {
-		name         string
-		line         string
-		lineNum      int
-		expectedInfo *CopyrightInfo
-		expectNil    bool
+		name              string
+		line              string
+		lineNum           int
+		filePath          string // optional, defaults to "file.go"
+		inHbsCommentBlock bool   // true if inside {{! ... }} block
+		expectedInfo      *CopyrightInfo
+		expectNil         bool
 	}{
 		{
 			name:    "Simple copyright with single year",
@@ -100,9 +102,11 @@ func TestParseCopyrightLine(t *testing.T) {
 			},
 		},
 		{
-			name:    "Handlebars indented copyright",
-			line:    "  Copyright IBM Corp. 2021, 2025",
-			lineNum: 2,
+			name:              "Handlebars indented copyright",
+			line:              "  Copyright IBM Corp. 2021, 2025",
+			lineNum:           2,
+			filePath:          "template.hbs", // Must be .hbs file for indented prefix detection
+			inHbsCommentBlock: true,           // Inside a {{! ... }} comment block
 			expectedInfo: &CopyrightInfo{
 				LineNumber:   2,
 				OriginalLine: "  Copyright IBM Corp. 2021, 2025",
@@ -117,7 +121,11 @@ func TestParseCopyrightLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseCopyrightLine(tt.line, tt.lineNum, "file.go")
+			filePath := tt.filePath
+			if filePath == "" {
+				filePath = "file.go"
+			}
+			result := parseCopyrightLine(tt.line, tt.lineNum, filePath, tt.inHbsCommentBlock)
 
 			if tt.expectNil {
 				assert.Nil(t, result)
@@ -419,7 +427,7 @@ package main
 
 func TestParseCopyrightLine_UnprefixedLicense(t *testing.T) {
 	line := "Copyright IBM Corp. 2018, 2025"
-	info := parseCopyrightLine(line, 1, "LICENSE")
+	info := parseCopyrightLine(line, 1, "LICENSE", false)
 	require.NotNil(t, info)
 	assert.Equal(t, "IBM Corp.", info.Holder)
 	assert.Equal(t, 2018, info.StartYear)
@@ -719,7 +727,7 @@ func TestParseCopyrightLine_StrictCopyrightCheck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := parseCopyrightLine(tt.line, 1, "file.go")
+			result := parseCopyrightLine(tt.line, 1, "file.go", false)
 			if tt.expectNil {
 				assert.Nil(t, result, "Should return nil for non-copyright lines")
 			} else {
@@ -760,7 +768,7 @@ func TestExtractCommentPrefix_AllFormats(t *testing.T) {
 
 func TestParseCopyrightLine_InlineComment(t *testing.T) {
 	line := "var x := 1 // Copyright IBM Corp. 2023"
-	info := parseCopyrightLine(line, 1, "file.go")
+	info := parseCopyrightLine(line, 1, "file.go", false)
 	require.NotNil(t, info)
 	assert.Equal(t, "IBM Corp.", info.Holder)
 	assert.Equal(t, 2023, info.StartYear)

@@ -39,14 +39,30 @@ func extractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
 	lineNum := 0
 	var copyrights []*CopyrightInfo
 
+	// Track if we're inside a {{! ... }} comment block for .hbs files
+	isHbsFile := strings.ToLower(filepath.Ext(filePath)) == ".hbs"
+	inHbsCommentBlock := false
+
 	// Scan entire file for all copyright statements
 	for scanner.Scan() {
 		lineNum++
 		line := scanner.Text()
 
+		// For .hbs files, track comment block state
+		if isHbsFile {
+			// Check for start of multi-line comment block: {{! at start (not closed on same line)
+			if strings.Contains(line, "{{!") && !strings.Contains(line, "}}") {
+				inHbsCommentBlock = true
+			}
+			// Check for end of comment block
+			if inHbsCommentBlock && strings.Contains(line, "}}") {
+				inHbsCommentBlock = false
+			}
+		}
+
 		// Check if line contains "copyright"
 		if strings.Contains(strings.ToLower(line), "copyright") {
-			info := parseCopyrightLine(line, lineNum, filePath)
+			info := parseCopyrightLine(line, lineNum, filePath, inHbsCommentBlock)
 			if info != nil {
 				copyrights = append(copyrights, info)
 			}
@@ -57,11 +73,15 @@ func extractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
 }
 
 // parseCopyrightLine extracts copyright details from a line
-func parseCopyrightLine(line string, lineNum int, filePath string) *CopyrightInfo {
-	// 1. Determine the prefix and content source
+// parseCopyrightLine extracts copyright details from a line
+// inHbsCommentBlock indicates if we're inside a {{! ... }} block (for .hbs files)
+func parseCopyrightLine(line string, lineNum int, filePath string, inHbsCommentBlock bool) *CopyrightInfo {
+	// 1. Determine the prefix and content source (file-aware)
+	// Pass inHbsCommentBlock to only allow indented prefixes inside comment blocks
+	prefixes := getCommentPrefixesForFile(filePath, inHbsCommentBlock)
 	bestIdx := -1
 	bestPrefix := ""
-	for _, p := range commentPrefixes {
+	for _, p := range prefixes {
 		if idx := strings.Index(line, p); idx >= 0 {
 			if bestIdx == -1 || idx < bestIdx {
 				bestIdx = idx
@@ -251,8 +271,25 @@ var commentPrefixes = []string{
 	"// ", "//",
 	"# ", "#",
 	"% ", "%",
-	"  ",
 	"* ", "*",
+}
+
+// hbsIndentedPrefixes are additional prefixes for .hbs files (multi-line {{! }} blocks)
+var hbsIndentedPrefixes = []string{
+	"  ", // Two spaces (common indentation inside {{! }} blocks)
+	"\t", // Tab indentation
+}
+
+// getCommentPrefixesForFile returns the appropriate comment prefixes for a file type
+// inHbsCommentBlock indicates if we're inside a {{! ... }} block in .hbs files
+func getCommentPrefixesForFile(filePath string, inHbsCommentBlock bool) []string {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	if ext == ".hbs" && inHbsCommentBlock {
+		// Only apply indented prefixes when inside a {{! ... }} comment block
+		// This prevents matching JavaScript code elsewhere in the file
+		return append(commentPrefixes, hbsIndentedPrefixes...)
+	}
+	return commentPrefixes
 }
 
 // hasSpecialFirstLine checks if the file content starts with a special line
