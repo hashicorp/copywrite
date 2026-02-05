@@ -409,7 +409,11 @@ func GetRepoRoot(workingDir string) (string, error) {
 	return strings.TrimSpace(string(repoRootOutput)), nil
 }
 
-func getFileLastCommitYears(repoRoot string) (map[string]int, int, error) {
+// Returns:
+// - A map of file paths to their last commit years for all files in the repository
+// - The year of the first commit in the repository (or 0 if not found)
+// - An error if the git command fails
+func buildRepositoryCache(repoRoot string) (map[string]int, int, error) {
     cmd := exec.Command("git", "log", "--format=format:%ad", "--date=format:%Y", "--name-only")
     cmd.Dir = repoRoot
     output, err := cmd.Output()
@@ -450,7 +454,7 @@ var (
 
 func InitializeGitCache(repoRoot string) error {
 	once.Do(func() {
-		cache, firstYear, err := getFileLastCommitYears(repoRoot)
+		cache, firstYear, err := buildRepositoryCache(repoRoot)
 		if err != nil {
 			lastCommitYearsCache = make(map[string]int)
 		} else {
