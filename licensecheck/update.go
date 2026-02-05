@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -408,6 +409,65 @@ func GetRepoRoot(workingDir string) (string, error) {
 	return strings.TrimSpace(string(repoRootOutput)), nil
 }
 
+func getFileLastCommitYears(repoRoot string) (map[string]int, int, error) {
+    cmd := exec.Command("git", "log", "--format=format:%ad", "--date=format:%Y", "--name-only")
+    cmd.Dir = repoRoot
+    output, err := cmd.Output()
+    if err != nil {
+        return nil, 0, err
+    }
+
+    result := make(map[string]int)
+    var currentYear int
+		firstYear := 0
+    
+    for _, line := range strings.Split(string(output), "\n") {
+        line = strings.TrimSpace(line)
+        if line == "" {
+            continue
+        }
+        // If it's a 4-digit year
+        if year, err := strconv.Atoi(line); err == nil && year > 1900 && year < 2100 {
+            currentYear = year
+						if year < firstYear || firstYear == 0 {
+							firstYear = year
+						}
+        } else if currentYear > 0 {
+            // It's a filename - only store first occurrence (most recent)
+            if _, exists := result[line]; !exists {
+                result[line] = currentYear
+            }
+        }
+    }
+    return result, firstYear, nil
+}
+
+var (
+	lastCommitYearsCache map[string]int
+	firstCommitYearCached  = 0
+	once sync.Once
+)
+
+func InitializeGitCache(repoRoot string) error {
+	once.Do(func() {
+		cache, firstYear, err := getFileLastCommitYears(repoRoot)
+		if err != nil {
+			lastCommitYearsCache = make(map[string]int)
+		} else {
+			lastCommitYearsCache = cache
+			firstCommitYearCached = firstYear
+		}
+	});
+	return nil
+}
+
+func getCachedFileLastCommitYear(filePath string, repoRoot string) (int, error) {
+	if year, exists := lastCommitYearsCache[filePath]; exists {
+		return year, nil
+	}
+	return 0, fmt.Errorf("file not found in git cache")
+}
+
 // getFileLastCommitYear returns the year of the last commit that modified a file
 func getFileLastCommitYear(filePath string, repoRoot string) (int, error) {
 	absPath, err := filepath.Abs(filePath)
@@ -417,20 +477,21 @@ func getFileLastCommitYear(filePath string, repoRoot string) (int, error) {
 
 	// Calculate relative path from repo root to file
 	relPath, err := filepath.Rel(repoRoot, absPath)
+	// fmt.Printf("Calculating last commit year for file: %s (relative path: %s)\n", absPath, relPath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to calculate relative path: %w", err)
 	}
 
-	// Run git log from repo root with relative path
-	output, err := executeGitCommand(
-		repoRoot,
-		"log", "-1", "--format=%ad", "--date=format:%Y", "--", relPath,
-	)
-	if err != nil {
-		return 0, err
+	// for k, v := range lastCommitYearsCache {
+	// 	// fmt.Printf("Cache entry: %q => %d\n", k, v)
+	// }
+
+	if cachedYear, err := getCachedFileLastCommitYear(relPath, repoRoot); err == nil {
+		return cachedYear, nil
+	} else {
+		return 0, nil
 	}
 
-	return parseYearFromGitOutput(output, false)
 }
 
 // GetRepoFirstCommitYear returns the year of the first commit in the repository
@@ -441,12 +502,9 @@ func GetRepoFirstCommitYear(workingDir string) (int, error) {
 		return 0, err
 	}
 
-	output, err := executeGitCommand(repoRoot, "log", "--reverse", "--format=%ad", "--date=format:%Y")
-	if err != nil {
-		return 0, err
-	}
+	InitializeGitCache(repoRoot)
 
-	return parseYearFromGitOutput(output, true)
+	return firstCommitYearCached, nil
 }
 
 // GetRepoLastCommitYear returns the year of the last commit in the repository
