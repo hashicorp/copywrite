@@ -220,13 +220,13 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 			defer wg.Done()
 
 			for path := range ch {
-				d, err := os.Stat(path)
-				if err != nil || d.IsDir() {
+				// Check if file should be ignored
+				if addlicense.FileMatches(path, ignoredPatterns) {
 					continue
 				}
 
-				// Check if file should be ignored
-				if addlicense.FileMatches(path, ignoredPatterns) {
+				d, err := os.Stat(path)
+				if err != nil || d.IsDir() {
 					continue
 				}
 
