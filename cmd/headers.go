@@ -263,7 +263,6 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 	// Producer: walk the tree and push files onto the channel
 	go func() {
 		_ = filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
-			// cmd.Printf("Checking: %s\n", path)
 			// Non-ignored file -> enqueue for processing. If channel is full,
 			// this will block until a worker consumes entries, which is fine.
 			if err != nil {
