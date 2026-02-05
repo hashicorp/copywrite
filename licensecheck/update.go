@@ -469,7 +469,7 @@ func GetRepoFirstCommitYear(workingDir string) (int, error) {
 		return 0, err
 	}
 
-	InitializeGitCache(repoRoot)
+	_ = InitializeGitCache(repoRoot)
 
 	return firstCommitYearCached, nil
 }
