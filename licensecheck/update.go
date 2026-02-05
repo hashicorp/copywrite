@@ -481,14 +481,9 @@ func getFileLastCommitYear(filePath string, repoRoot string) (int, error) {
 
 	// Calculate relative path from repo root to file
 	relPath, err := filepath.Rel(repoRoot, absPath)
-	// fmt.Printf("Calculating last commit year for file: %s (relative path: %s)\n", absPath, relPath)
 	if err != nil {
 		return 0, fmt.Errorf("failed to calculate relative path: %w", err)
 	}
-
-	// for k, v := range lastCommitYearsCache {
-	// 	// fmt.Printf("Cache entry: %q => %d\n", k, v)
-	// }
 
 	if cachedYear, err := getCachedFileLastCommitYear(relPath, repoRoot); err == nil {
 		return cachedYear, nil
