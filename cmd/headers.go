@@ -220,16 +220,6 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 			defer wg.Done()
 
 			for path := range ch {
-				// Check if file should be ignored
-				if addlicense.FileMatches(path, ignoredPatterns) {
-					continue
-				}
-
-				d, err := os.Stat(path)
-				if err != nil || d.IsDir() {
-					continue
-				}
-
 				// capture base and skip LICENSE files here as well
 				base := filepath.Base(path)
 				if strings.EqualFold(base, "LICENSE") || strings.EqualFold(base, "LICENSE.TXT") || strings.EqualFold(base, "LICENSE.MD") {
@@ -263,12 +253,17 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 	// Producer: walk the tree and push files onto the channel
 	go func() {
 		_ = filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
-			// Non-ignored file -> enqueue for processing. If channel is full,
-			// this will block until a worker consumes entries, which is fine.
-			if err != nil {
+			// Check if file should be ignored
+			if addlicense.FileMatches(path, ignoredPatterns) {
 				return nil
 			}
 
+			if err != nil || d.IsDir() {
+				return nil
+			}
+
+			// Non-ignored file -> enqueue for processing. If channel is full,
+			// this will block until a worker consumes entries, which is fine.
 			ch <- path
 			return nil
 		})
