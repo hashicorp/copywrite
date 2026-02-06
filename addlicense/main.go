@@ -363,11 +363,29 @@ func addLicense(path string, fmode os.FileMode, tmpl *template.Template, data Li
 	return true, os.WriteFile(path, b, fmode)
 }
 
+// isDirectory checks if the given path points to a directory (including through symlinks)
+func isDirectory(path string) (bool, error) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return false, err
+	}
+	return fi.IsDir(), nil
+}
+
 // updateLicenseHolder checks if a file contains old copyright holders
 // (like "HashiCorp, Inc.") and updates them to the new holder while
 // preserving years and other header information.
 // Returns true if the file was updated.
 func updateLicenseHolder(path string, fmode os.FileMode, newData LicenseData) (bool, error) {
+	// Skip directories and symlinks to directories
+	isDir, err := isDirectory(path)
+	if err != nil {
+		return false, err
+	}
+	if isDir {
+		return false, nil
+	}
+
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return false, err
@@ -435,6 +453,15 @@ func updateLicenseHolder(path string, fmode os.FileMode, newData LicenseData) (b
 // wouldUpdateLicenseHolder checks if a file would need copyright holder updates
 // without actually modifying the file. Used for plan/dry-run mode.
 func wouldUpdateLicenseHolder(path string, newData LicenseData) (bool, error) {
+	// Skip directories and symlinks to directories
+	isDir, err := isDirectory(path)
+	if err != nil {
+		return false, err
+	}
+	if isDir {
+		return false, nil
+	}
+
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return false, err
