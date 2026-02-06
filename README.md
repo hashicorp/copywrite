@@ -55,6 +55,21 @@ Flags:
 Use "copywrite [command] --help" for more information about a command.
 ```
 
+### Automatic Copyright Holder Migration
+
+The `copywrite headers` command automatically detects and updates old copyright
+holders (such as "HashiCorp, Inc.") to the configured holder (default: "IBM Corp.")
+while preserving existing year information and updating year ranges.
+
+This ensures that:
+
+- Old headers from merged PRs are automatically corrected
+- Manually copied headers are updated
+- Year ranges are kept current
+
+No additional flags are needed - the migration happens automatically as part of
+the normal headers command execution.
+
 To get started with Copywrite on a new project, run `copywrite init`, which will
 interactively help generate a `.copywrite.hcl` config file to add to Git.
 

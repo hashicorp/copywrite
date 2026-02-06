@@ -417,6 +417,145 @@ func TestHasLicense(t *testing.T) {
 	}
 }
 
+func TestUpdateLicenseHolder(t *testing.T) {
+	data := LicenseData{Holder: "IBM Corp.", Year: "2023, 2026", SPDXID: "MPL-2.0"}
+
+	tests := []struct {
+		name        string
+		content     string
+		wantContent string
+		wantUpdated bool
+	}{
+		{
+			name:        "Update HashiCorp, Inc. with year after",
+			content:     "// Copyright (c) HashiCorp, Inc. 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update HashiCorp, Inc. with year before",
+			content:     "// Copyright 2023 HashiCorp, Inc.\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update HashiCorp without Inc",
+			content:     "// Copyright HashiCorp 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update HashiCorp without (c) symbol",
+			content:     "// Copyright HashiCorp, Inc. 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with Python comment style",
+			content:     "# Copyright (c) HashiCorp, Inc. 2023\n\nprint('hello')",
+			wantContent: "# Copyright IBM Corp. 2023, 2026\n\nprint('hello')",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with block comment style",
+			content:     "/*\n * Copyright (c) HashiCorp, Inc. 2023\n */\n\nint main() {}",
+			wantContent: "/*\n * Copyright IBM Corp. 2023, 2026\n */\n\nint main() {}",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with HTML comment style",
+			content:     "<!-- Copyright (c) HashiCorp, Inc. 2023 -->\n\n<html></html>",
+			wantContent: "<!-- Copyright IBM Corp. 2023, 2026 -->\n\n<html></html>",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update HashiCorp Inc without comma",
+			content:     "// Copyright HashiCorp Inc 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with year range",
+			content:     "// Copyright (c) HashiCorp, Inc. 2020, 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "No update when different holder",
+			content:     "// Copyright (c) Google LLC 2023\n\npackage main",
+			wantContent: "// Copyright (c) Google LLC 2023\n\npackage main",
+			wantUpdated: false,
+		},
+		{
+			name:        "No update when no copyright",
+			content:     "package main\n\nfunc main() {}",
+			wantContent: "package main\n\nfunc main() {}",
+			wantUpdated: false,
+		},
+		{
+			name:        "No update for HashiCorp in code body",
+			content:     "package main\n\n// This mentions HashiCorp, Inc.\nfunc main() {}",
+			wantContent: "package main\n\n// This mentions HashiCorp, Inc.\nfunc main() {}",
+			wantUpdated: false,
+		},
+		{
+			name:        "Update case insensitive",
+			content:     "// Copyright (c) HASHICORP, INC. 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with extra whitespace",
+			content:     "//   Copyright  (c)  HashiCorp, Inc.  2023\n\npackage main",
+			wantContent: "//   Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create temp file
+			tmpfile, err := os.CreateTemp("", "test-*.go")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Remove(tmpfile.Name()); err != nil {
+					t.Logf("Failed to remove temp file: %v", err)
+				}
+			}()
+
+			// Write test content
+			if _, err := tmpfile.Write([]byte(tt.content)); err != nil {
+				t.Fatal(err)
+			}
+			if err := tmpfile.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			// Run update
+			updated, err := updateLicenseHolder(tmpfile.Name(), 0644, data)
+			if err != nil {
+				t.Fatalf("updateLicenseHolder() error = %v", err)
+			}
+
+			if updated != tt.wantUpdated {
+				t.Errorf("updateLicenseHolder() updated = %v, want %v", updated, tt.wantUpdated)
+			}
+
+			// Read result
+			result, err := os.ReadFile(tmpfile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(result) != tt.wantContent {
+				t.Errorf("updateLicenseHolder() result:\ngot:\n%s\n\nwant:\n%s", result, tt.wantContent)
+			}
+		})
+	}
+}
+
 func TestFileMatches(t *testing.T) {
 	tests := []struct {
 		pattern   string
@@ -474,5 +613,68 @@ func TestFileMatches(t *testing.T) {
 		if got := FileMatches(tt.path, patterns); got != tt.wantMatch {
 			t.Errorf("fileMatches(%q, %q) returned %v, want %v", tt.path, patterns, got, tt.wantMatch)
 		}
+	}
+}
+
+func TestWouldUpdateLicenseHolder(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		license  LicenseData
+		expected bool
+	}{
+		{
+			name:     "Would update HashiCorp, Inc.",
+			content:  "// Copyright (c) 2023 HashiCorp, Inc.\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: true,
+		},
+		{
+			name:     "Would update HashiCorp Inc without comma",
+			content:  "// Copyright 2023 HashiCorp Inc\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: true,
+		},
+		{
+			name:     "Would not update different holder",
+			content:  "// Copyright 2023 Google LLC\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: false,
+		},
+		{
+			name:     "Would not update no copyright",
+			content:  "// This is just a comment\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpfile, err := os.CreateTemp("", "test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Remove(tmpfile.Name()); err != nil {
+					t.Logf("Failed to remove temp file: %v", err)
+				}
+			}()
+
+			if _, err := tmpfile.Write([]byte(tt.content)); err != nil {
+				t.Fatal(err)
+			}
+			if err := tmpfile.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := wouldUpdateLicenseHolder(tmpfile.Name(), tt.license)
+			if err != nil {
+				t.Fatalf("wouldUpdateLicenseHolder returned error: %v", err)
+			}
+			if got != tt.expected {
+				t.Errorf("wouldUpdateLicenseHolder() = %v, expected %v", got, tt.expected)
+			}
+		})
 	}
 }
