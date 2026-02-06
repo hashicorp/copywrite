@@ -430,13 +430,18 @@ func buildRepositoryCache(repoRoot string) (map[string]int, int, error) {
 		if line == "" {
 			continue
 		}
-		// If it's a 4-digit year
-		if year, err := strconv.Atoi(line); err == nil && year > 1900 && year < 2100 {
-			currentYear = year
-			if year < firstYear || firstYear == 0 {
-				firstYear = year
+
+		if strings.HasPrefix(line, "__CW_YEAR__=") {
+			line = strings.TrimPrefix(line, "__CW_YEAR__=")
+			// If it's a 4-digit year
+			if year, err := strconv.Atoi(line); err == nil && year > 1900 && year < 2100 {
+				currentYear = year
+				if year < firstYear || firstYear == 0 {
+					firstYear = year
+				}
 			}
-		} else if currentYear > 0 {
+		}
+		if currentYear > 0 {
 			// It's a filename - only store first occurrence (most recent)
 			if _, exists := result[line]; !exists {
 				result[line] = currentYear
@@ -514,7 +519,7 @@ func GetRepoLastCommitYear(workingDir string) (int, error) {
 		return 0, err
 	}
 
-	output, err := executeGitCommand(repoRoot, "log", "-1", "--format=%ad", "--date=format:%Y")
+	output, err := executeGitCommand(repoRoot, "log", "-1", "--format=__CW_YEAR__=%ad", "--date=format:%Y")
 	if err != nil {
 		return 0, err
 	}
