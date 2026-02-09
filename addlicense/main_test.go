@@ -693,7 +693,9 @@ func TestIsDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmpfile.Close()
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	// Test regular directory
 	testDir := filepath.Join(tmpDir, "test-directory")
