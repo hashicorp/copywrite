@@ -417,6 +417,145 @@ func TestHasLicense(t *testing.T) {
 	}
 }
 
+func TestUpdateLicenseHolder(t *testing.T) {
+	data := LicenseData{Holder: "IBM Corp.", Year: "2023, 2026", SPDXID: "MPL-2.0"}
+
+	tests := []struct {
+		name        string
+		content     string
+		wantContent string
+		wantUpdated bool
+	}{
+		{
+			name:        "Update HashiCorp, Inc. with year after",
+			content:     "// Copyright (c) HashiCorp, Inc. 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update HashiCorp, Inc. with year before",
+			content:     "// Copyright 2023 HashiCorp, Inc.\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update HashiCorp without Inc",
+			content:     "// Copyright HashiCorp 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update HashiCorp without (c) symbol",
+			content:     "// Copyright HashiCorp, Inc. 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with Python comment style",
+			content:     "# Copyright (c) HashiCorp, Inc. 2023\n\nprint('hello')",
+			wantContent: "# Copyright IBM Corp. 2023, 2026\n\nprint('hello')",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with block comment style",
+			content:     "/*\n * Copyright (c) HashiCorp, Inc. 2023\n */\n\nint main() {}",
+			wantContent: "/*\n * Copyright IBM Corp. 2023, 2026\n */\n\nint main() {}",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with HTML comment style",
+			content:     "<!-- Copyright (c) HashiCorp, Inc. 2023 -->\n\n<html></html>",
+			wantContent: "<!-- Copyright IBM Corp. 2023, 2026 -->\n\n<html></html>",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update HashiCorp Inc without comma",
+			content:     "// Copyright HashiCorp Inc 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with year range",
+			content:     "// Copyright (c) HashiCorp, Inc. 2020, 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "No update when different holder",
+			content:     "// Copyright (c) Google LLC 2023\n\npackage main",
+			wantContent: "// Copyright (c) Google LLC 2023\n\npackage main",
+			wantUpdated: false,
+		},
+		{
+			name:        "No update when no copyright",
+			content:     "package main\n\nfunc main() {}",
+			wantContent: "package main\n\nfunc main() {}",
+			wantUpdated: false,
+		},
+		{
+			name:        "No update for HashiCorp in code body",
+			content:     "package main\n\n// This mentions HashiCorp, Inc.\nfunc main() {}",
+			wantContent: "package main\n\n// This mentions HashiCorp, Inc.\nfunc main() {}",
+			wantUpdated: false,
+		},
+		{
+			name:        "Update case insensitive",
+			content:     "// Copyright (c) HASHICORP, INC. 2023\n\npackage main",
+			wantContent: "// Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+		{
+			name:        "Update with extra whitespace",
+			content:     "//   Copyright  (c)  HashiCorp, Inc.  2023\n\npackage main",
+			wantContent: "//   Copyright IBM Corp. 2023, 2026\n\npackage main",
+			wantUpdated: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create temp file
+			tmpfile, err := os.CreateTemp("", "test-*.go")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Remove(tmpfile.Name()); err != nil {
+					t.Logf("Failed to remove temp file: %v", err)
+				}
+			}()
+
+			// Write test content
+			if _, err := tmpfile.Write([]byte(tt.content)); err != nil {
+				t.Fatal(err)
+			}
+			if err := tmpfile.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			// Run update
+			updated, err := updateLicenseHolder(tmpfile.Name(), 0644, data)
+			if err != nil {
+				t.Fatalf("updateLicenseHolder() error = %v", err)
+			}
+
+			if updated != tt.wantUpdated {
+				t.Errorf("updateLicenseHolder() updated = %v, want %v", updated, tt.wantUpdated)
+			}
+
+			// Read result
+			result, err := os.ReadFile(tmpfile.Name())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if string(result) != tt.wantContent {
+				t.Errorf("updateLicenseHolder() result:\ngot:\n%s\n\nwant:\n%s", result, tt.wantContent)
+			}
+		})
+	}
+}
+
 func TestFileMatches(t *testing.T) {
 	tests := []struct {
 		pattern   string
@@ -474,5 +613,360 @@ func TestFileMatches(t *testing.T) {
 		if got := FileMatches(tt.path, patterns); got != tt.wantMatch {
 			t.Errorf("fileMatches(%q, %q) returned %v, want %v", tt.path, patterns, got, tt.wantMatch)
 		}
+	}
+}
+
+func TestWouldUpdateLicenseHolder(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		license  LicenseData
+		expected bool
+	}{
+		{
+			name:     "Would update HashiCorp, Inc.",
+			content:  "// Copyright (c) 2023 HashiCorp, Inc.\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: true,
+		},
+		{
+			name:     "Would update HashiCorp Inc without comma",
+			content:  "// Copyright 2023 HashiCorp Inc\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: true,
+		},
+		{
+			name:     "Would not update different holder",
+			content:  "// Copyright 2023 Google LLC\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: false,
+		},
+		{
+			name:     "Would not update no copyright",
+			content:  "// This is just a comment\n",
+			license:  LicenseData{Holder: "IBM Corp.", Year: "2026"},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpfile, err := os.CreateTemp("", "test")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := os.Remove(tmpfile.Name()); err != nil {
+					t.Logf("Failed to remove temp file: %v", err)
+				}
+			}()
+
+			if _, err := tmpfile.Write([]byte(tt.content)); err != nil {
+				t.Fatal(err)
+			}
+			if err := tmpfile.Close(); err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := wouldUpdateLicenseHolder(tmpfile.Name(), tt.license)
+			if err != nil {
+				t.Fatalf("wouldUpdateLicenseHolder returned error: %v", err)
+			}
+			if got != tt.expected {
+				t.Errorf("wouldUpdateLicenseHolder() = %v, expected %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestIsDirectory(t *testing.T) {
+	// Create temporary directory for test
+	tmpDir := tempDir(t)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
+
+	// Test regular file
+	tmpfile, err := os.CreateTemp(tmpDir, "test-file-*.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test regular directory
+	testDir := filepath.Join(tmpDir, "test-directory")
+	if err := os.Mkdir(testDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test symlink to file
+	symlinkToFile := filepath.Join(tmpDir, "symlink-to-file")
+	if err := os.Symlink(tmpfile.Name(), symlinkToFile); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test symlink to directory
+	symlinkToDir := filepath.Join(tmpDir, "symlink-to-dir")
+	if err := os.Symlink(testDir, symlinkToDir); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name     string
+		path     string
+		expected bool
+		wantErr  bool
+	}{
+		{
+			name:     "Regular file",
+			path:     tmpfile.Name(),
+			expected: false,
+			wantErr:  false,
+		},
+		{
+			name:     "Regular directory",
+			path:     testDir,
+			expected: true,
+			wantErr:  false,
+		},
+		{
+			name:     "Symlink to file",
+			path:     symlinkToFile,
+			expected: false,
+			wantErr:  false,
+		},
+		{
+			name:     "Symlink to directory",
+			path:     symlinkToDir,
+			expected: true,
+			wantErr:  false,
+		},
+		{
+			name:     "Non-existent path",
+			path:     filepath.Join(tmpDir, "does-not-exist"),
+			expected: false,
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := isDirectory(tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("isDirectory() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.expected {
+				t.Errorf("isDirectory() = %v, expected %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestUpdateLicenseHolderSkipsDirectories(t *testing.T) {
+	// Create temporary directory for test
+	tmpDir := tempDir(t)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
+
+	data := LicenseData{Holder: "IBM Corp.", Year: "2026", SPDXID: "MPL-2.0"}
+
+	// Test regular directory
+	testDir := filepath.Join(tmpDir, "test-directory")
+	if err := os.Mkdir(testDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test symlink to directory
+	symlinkToDir := filepath.Join(tmpDir, "symlink-to-dir")
+	if err := os.Symlink(testDir, symlinkToDir); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{
+			name: "Regular directory",
+			path: testDir,
+		},
+		{
+			name: "Symlink to directory",
+			path: symlinkToDir,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			updated, err := updateLicenseHolder(tt.path, 0755, data)
+			if err != nil {
+				t.Fatalf("updateLicenseHolder() should not error on directories: %v", err)
+			}
+			if updated {
+				t.Errorf("updateLicenseHolder() should not update directories, got updated=true")
+			}
+		})
+	}
+}
+
+func TestWouldUpdateLicenseHolderSkipsDirectories(t *testing.T) {
+	// Create temporary directory for test
+	tmpDir := tempDir(t)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
+
+	data := LicenseData{Holder: "IBM Corp.", Year: "2026", SPDXID: "MPL-2.0"}
+
+	// Test regular directory
+	testDir := filepath.Join(tmpDir, "test-directory")
+	if err := os.Mkdir(testDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test symlink to directory
+	symlinkToDir := filepath.Join(tmpDir, "symlink-to-dir")
+	if err := os.Symlink(testDir, symlinkToDir); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{
+			name: "Regular directory",
+			path: testDir,
+		},
+		{
+			name: "Symlink to directory",
+			path: symlinkToDir,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			wouldUpdate, err := wouldUpdateLicenseHolder(tt.path, data)
+			if err != nil {
+				t.Fatalf("wouldUpdateLicenseHolder() should not error on directories: %v", err)
+			}
+			if wouldUpdate {
+				t.Errorf("wouldUpdateLicenseHolder() should not update directories, got wouldUpdate=true")
+			}
+		})
+	}
+}
+
+func TestDirectorySkippingRegressionTest(t *testing.T) {
+	// Regression test for: Fix 'is a directory' error in copyright holder migration
+	// This test simulates the scenario that was causing crashes where filepath.Walk
+	// encounters symlinks to directories, such as version directories in test fixtures
+
+	// Create temporary directory structure similar to test fixtures
+	tmpDir := tempDir(t)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	}()
+
+	data := LicenseData{Holder: "IBM Corp.", Year: "2023, 2026", SPDXID: "MPL-2.0"}
+
+	// Create test fixture structure
+	testFixtureDir := filepath.Join(tmpDir, "test-fixture")
+	if err := os.Mkdir(testFixtureDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a version directory (like "v1.2.3")
+	versionDir := filepath.Join(testFixtureDir, "v1.2.3")
+	if err := os.Mkdir(versionDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a symlink to the version directory (this was causing the crash)
+	symlinkToVersion := filepath.Join(testFixtureDir, "latest")
+	if err := os.Symlink("v1.2.3", symlinkToVersion); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add a test file with HashiCorp copyright in the version directory
+	testFile := filepath.Join(versionDir, "test.go")
+	testContent := "// Copyright (c) HashiCorp, Inc. 2023\n\npackage main\n\nfunc main() {}"
+	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Walk the directory structure like the real code would
+	var pathsToUpdate []string
+	err := filepath.Walk(testFixtureDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip directories (this is where the bug was)
+		isDir, dirErr := isDirectory(path)
+		if dirErr != nil {
+			return dirErr
+		}
+		if isDir {
+			return nil // Skip directories and symlinks to directories
+		}
+
+		// Check if this file would be updated
+		wouldUpdate, checkErr := wouldUpdateLicenseHolder(path, data)
+		if checkErr != nil {
+			t.Fatalf("wouldUpdateLicenseHolder failed on %s: %v", path, checkErr)
+		}
+
+		if wouldUpdate {
+			pathsToUpdate = append(pathsToUpdate, path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("filepath.Walk should not fail with proper directory skipping: %v", err)
+	}
+
+	// Verify we found the test file but skipped directories
+	if len(pathsToUpdate) != 1 {
+		t.Fatalf("Expected to find 1 file to update, found %d: %v", len(pathsToUpdate), pathsToUpdate)
+	}
+
+	if pathsToUpdate[0] != testFile {
+		t.Errorf("Expected to find test file %s, found %s", testFile, pathsToUpdate[0])
+	}
+
+	// Verify we can actually update the file without crashes
+	updated, err := updateLicenseHolder(pathsToUpdate[0], 0644, data)
+	if err != nil {
+		t.Fatalf("updateLicenseHolder should not fail: %v", err)
+	}
+
+	if !updated {
+		t.Errorf("updateLicenseHolder should have updated the file")
+	}
+
+	// Verify content was updated correctly
+	result, err := os.ReadFile(pathsToUpdate[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	expectedContent := "// Copyright IBM Corp. 2023, 2026\n\npackage main\n\nfunc main() {}"
+	if string(result) != expectedContent {
+		t.Errorf("File content not updated correctly:\ngot:\n%s\n\nwant:\n%s", result, expectedContent)
 	}
 }
