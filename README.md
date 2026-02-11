@@ -192,6 +192,10 @@ automatically installs the binary and adds it to your `$PATH` so you can call it
 freely in later steps.
 
 ```yaml
+  - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+    with:
+        fetch-depth: 0 # As git operations are involved, we will need a deep clone of the repo.
+
   - name: Setup Copywrite
     uses: hashicorp/setup-copywrite@867a1a2a064a0626db322392806428f7dc59cb3e # v1.1.2
 
