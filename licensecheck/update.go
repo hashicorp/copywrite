@@ -583,9 +583,18 @@ func evaluateCopyrightUpdates(
 
 // UpdateCopyrightHeader updates all copyright headers in a file if needed
 // If forceCurrentYear is true, forces end year to current year regardless of git history
-// repo and repoRoot can be nil/empty if git info is not available
 // Returns true if the file was modified
-func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int, forceCurrentYear bool, repoFirstYear int, repoRoot string) (bool, error) {
+func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int, forceCurrentYear bool) (bool, error) {
+	repoRoot, _ := GetRepoRoot(filepath.Dir(filePath))
+	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
+	return UpdateCopyrightHeaderWithCache(filePath, targetHolder, configYear, forceCurrentYear, repoFirstYear, repoRoot)
+}
+
+// UpdateCopyrightHeaderWithCache updates all copyright headers in a file if needed
+// If forceCurrentYear is true, forces end year to current year regardless of git history
+// repoFirstYear and repoRoot can be provided to avoid repeated git lookups when processing multiple files
+// Returns true if the file was modified
+func UpdateCopyrightHeaderWithCache(filePath string, targetHolder string, configYear int, forceCurrentYear bool, repoFirstYear int, repoRoot string) (bool, error) {
 	// Skip .copywrite.hcl config file
 	if filepath.Base(filePath) == ".copywrite.hcl" {
 		return false, nil
@@ -677,9 +686,18 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 
 // NeedsUpdate checks if a file would be updated without actually modifying it
 // If forceCurrentYear is true, forces end year to current year regardless of git history
-// repo and repoRoot can be nil/empty if git info is not available
 // Returns true if the file has copyrights matching targetHolder that need year updates
-func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurrentYear bool, repoFirstCommitYear int, repoRoot string) (bool, error) {
+func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurrentYear bool) (bool, error) {
+	repoRoot, _ := GetRepoRoot(filepath.Dir(filePath))
+	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
+	return NeedsUpdateWithCache(filePath, targetHolder, configYear, forceCurrentYear, repoFirstYear, repoRoot)
+}
+
+// NeedsUpdateWithCache checks if a file would be updated without actually modifying it
+// If forceCurrentYear is true, forces end year to current year regardless of git history
+// repoFirstYear and repoRoot can be provided to avoid repeated git lookups when processing multiple files
+// Returns true if the file has copyrights matching targetHolder that need year updates
+func NeedsUpdateWithCache(filePath string, targetHolder string, configYear int, forceCurrentYear bool, repoFirstCommitYear int, repoRoot string) (bool, error) {
 	// Skip .copywrite.hcl config file
 	if filepath.Base(filePath) == ".copywrite.hcl" {
 		return false, nil

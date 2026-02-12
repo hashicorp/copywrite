@@ -232,14 +232,14 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 				}
 
 				if !dryRun {
-					updated, err := licensecheck.UpdateCopyrightHeader(path, targetHolder, configYear, false, repoFirstYear, repoRoot)
+					updated, err := licensecheck.UpdateCopyrightHeaderWithCache(path, targetHolder, configYear, false, repoFirstYear, repoRoot)
 					if err == nil && updated {
 						cmd.Printf("  %s\n", path)
 						atomic.AddInt64(&updatedCount64, 1)
 						atomic.StoreInt32(&anyFileUpdatedFlag, 1)
 					}
 				} else {
-					needsUpdate, err := licensecheck.NeedsUpdate(path, targetHolder, configYear, false, repoFirstYear, repoRoot)
+					needsUpdate, err := licensecheck.NeedsUpdateWithCache(path, targetHolder, configYear, false, repoFirstYear, repoRoot)
 					if err == nil && needsUpdate {
 						cmd.Printf("  %s\n", path)
 						atomic.AddInt64(&updatedCount64, 1)
@@ -300,12 +300,12 @@ func updateLicenseFile(cmd *cobra.Command, licensePath string, anyFileUpdated bo
 
 	// Update LICENSE file, forcing current year if any file was updated
 	if !dryRun {
-		updated, err := licensecheck.UpdateCopyrightHeader(licensePath, targetHolder, configYear, anyFileUpdated, repoFirstYear, repoRoot)
+		updated, err := licensecheck.UpdateCopyrightHeaderWithCache(licensePath, targetHolder, configYear, anyFileUpdated, repoFirstYear, repoRoot)
 		if err == nil && updated {
 			cmd.Printf("\nUpdated LICENSE file: %s\n", licensePath)
 		}
 	} else {
-		needsUpdate, err := licensecheck.NeedsUpdate(licensePath, targetHolder, configYear, anyFileUpdated, repoFirstYear, repoRoot)
+		needsUpdate, err := licensecheck.NeedsUpdateWithCache(licensePath, targetHolder, configYear, anyFileUpdated, repoFirstYear, repoRoot)
 		if err == nil && needsUpdate {
 			cmd.Printf("\n[DRY RUN] Would update LICENSE file: %s\n", licensePath)
 		}
