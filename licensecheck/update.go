@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -72,6 +73,8 @@ func extractAllCopyrightInfo(filePath string) ([]*CopyrightInfo, error) {
 	return copyrights, scanner.Err()
 }
 
+var contentStartsWithCopyright = regexp.MustCompile(`(?i)^copyright\b`)
+
 // parseCopyrightLine extracts copyright details from a line
 // parseCopyrightLine extracts copyright details from a line
 // inHbsCommentBlock indicates if we're inside a {{! ... }} block (for .hbs files)
@@ -130,7 +133,7 @@ func parseCopyrightLine(line string, lineNum int, filePath string, inHbsCommentB
 	// Validate content starts with "Copyright"
 	// Normalize content for the check
 	content = strings.TrimSpace(content)
-	if !regexp.MustCompile(`(?i)^copyright\b`).MatchString(content) {
+	if !contentStartsWithCopyright.MatchString(content) {
 		return nil
 	}
 
@@ -394,8 +397,8 @@ func calculateYearUpdates(
 	return shouldUpdate, newStartYear, newEndYear
 }
 
-// getRepoRoot finds the git repository root from a given directory
-func getRepoRoot(workingDir string) (string, error) {
+// GetRepoRoot finds the git repository root from a given directory
+func GetRepoRoot(workingDir string) (string, error) {
 	repoRootOutput, err := executeGitCommand(
 		workingDir,
 		"rev-parse", "--show-toplevel",
@@ -406,15 +409,77 @@ func getRepoRoot(workingDir string) (string, error) {
 	return strings.TrimSpace(string(repoRootOutput)), nil
 }
 
-// getFileLastCommitYear returns the year of the last commit that modified a file
-func getFileLastCommitYear(filePath string) (int, error) {
-	absPath, err := filepath.Abs(filePath)
+// Returns:
+// - A map of file paths to their last commit years for all files in the repository
+// - The year of the first commit in the repository (or 0 if not found)
+// - An error if the git command fails
+func buildRepositoryCache(repoRoot string) (map[string]int, int, error) {
+	cmd := exec.Command("git", "log", "--format=format:%ad", "--date=format:%Y", "--name-only")
+	cmd.Dir = repoRoot
+	output, err := cmd.Output()
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	}
 
-	// Find repository root
-	repoRoot, err := getRepoRoot(filepath.Dir(absPath))
+	result := make(map[string]int)
+	var currentYear int
+	firstYear := 0
+
+	for _, line := range strings.Split(string(output), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		if strings.HasPrefix(line, "__CW_YEAR__=") {
+			line = strings.TrimPrefix(line, "__CW_YEAR__=")
+			// If it's a 4-digit year
+			if year, err := strconv.Atoi(line); err == nil && year > 1900 && year < 2100 {
+				currentYear = year
+				if year < firstYear || firstYear == 0 {
+					firstYear = year
+				}
+			}
+		}
+		if currentYear > 0 {
+			// It's a filename - only store first occurrence (most recent)
+			if _, exists := result[line]; !exists {
+				result[line] = currentYear
+			}
+		}
+	}
+	return result, firstYear, nil
+}
+
+var (
+	lastCommitYearsCache  map[string]int
+	firstCommitYearCached = 0
+	once                  sync.Once
+)
+
+func InitializeGitCache(repoRoot string) error {
+	once.Do(func() {
+		cache, firstYear, err := buildRepositoryCache(repoRoot)
+		if err != nil {
+			lastCommitYearsCache = make(map[string]int)
+		} else {
+			lastCommitYearsCache = cache
+			firstCommitYearCached = firstYear
+		}
+	})
+	return nil
+}
+
+func getCachedFileLastCommitYear(filePath string, repoRoot string) (int, error) {
+	if year, exists := lastCommitYearsCache[filePath]; exists {
+		return year, nil
+	}
+	return 0, fmt.Errorf("file not found in git cache")
+}
+
+// getFileLastCommitYear returns the year of the last commit that modified a file
+func getFileLastCommitYear(filePath string, repoRoot string) (int, error) {
+	absPath, err := filepath.Abs(filePath)
 	if err != nil {
 		return 0, err
 	}
@@ -425,43 +490,36 @@ func getFileLastCommitYear(filePath string) (int, error) {
 		return 0, fmt.Errorf("failed to calculate relative path: %w", err)
 	}
 
-	// Run git log from repo root with relative path
-	output, err := executeGitCommand(
-		repoRoot,
-		"log", "-1", "--format=%ad", "--date=format:%Y", "--", relPath,
-	)
-	if err != nil {
-		return 0, err
+	if cachedYear, err := getCachedFileLastCommitYear(relPath, repoRoot); err == nil {
+		return cachedYear, nil
+	} else {
+		return 0, nil
 	}
 
-	return parseYearFromGitOutput(output, false)
 }
 
 // GetRepoFirstCommitYear returns the year of the first commit in the repository
 func GetRepoFirstCommitYear(workingDir string) (int, error) {
 	// Find repository root for consistency
-	repoRoot, err := getRepoRoot(workingDir)
+	repoRoot, err := GetRepoRoot(workingDir)
 	if err != nil {
 		return 0, err
 	}
 
-	output, err := executeGitCommand(repoRoot, "log", "--reverse", "--format=%ad", "--date=format:%Y")
-	if err != nil {
-		return 0, err
-	}
+	_ = InitializeGitCache(repoRoot)
 
-	return parseYearFromGitOutput(output, true)
+	return firstCommitYearCached, nil
 }
 
 // GetRepoLastCommitYear returns the year of the last commit in the repository
 func GetRepoLastCommitYear(workingDir string) (int, error) {
 	// Find repository root for consistency
-	repoRoot, err := getRepoRoot(workingDir)
+	repoRoot, err := GetRepoRoot(workingDir)
 	if err != nil {
 		return 0, err
 	}
 
-	output, err := executeGitCommand(repoRoot, "log", "-1", "--format=%ad", "--date=format:%Y")
+	output, err := executeGitCommand(repoRoot, "log", "-1", "--format=__CW_YEAR__=%ad", "--date=format:%Y")
 	if err != nil {
 		return 0, err
 	}
@@ -527,6 +585,16 @@ func evaluateCopyrightUpdates(
 // If forceCurrentYear is true, forces end year to current year regardless of git history
 // Returns true if the file was modified
 func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int, forceCurrentYear bool) (bool, error) {
+	repoRoot, _ := GetRepoRoot(filepath.Dir(filePath))
+	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
+	return UpdateCopyrightHeaderWithCache(filePath, targetHolder, configYear, forceCurrentYear, repoFirstYear, repoRoot)
+}
+
+// UpdateCopyrightHeaderWithCache updates all copyright headers in a file if needed
+// If forceCurrentYear is true, forces end year to current year regardless of git history
+// repoFirstYear and repoRoot can be provided to avoid repeated git lookups when processing multiple files
+// Returns true if the file was modified
+func UpdateCopyrightHeaderWithCache(filePath string, targetHolder string, configYear int, forceCurrentYear bool, repoFirstYear int, repoRoot string) (bool, error) {
 	// Skip .copywrite.hcl config file
 	if filepath.Base(filePath) == ".copywrite.hcl" {
 		return false, nil
@@ -555,8 +623,13 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 	}
 
 	currentYear := time.Now().Year()
-	lastCommitYear, _ := getFileLastCommitYear(filePath)
-	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
+
+	// Try to get the last commit year from git if repo is available
+	lastCommitYear := 0
+	if repoRoot != "" {
+		lastCommitYear, _ = getFileLastCommitYear(filePath, repoRoot)
+	}
+	// repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
 
 	// Evaluate which copyrights need updating
 	updates := evaluateCopyrightUpdates(
@@ -615,6 +688,16 @@ func UpdateCopyrightHeader(filePath string, targetHolder string, configYear int,
 // If forceCurrentYear is true, forces end year to current year regardless of git history
 // Returns true if the file has copyrights matching targetHolder that need year updates
 func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurrentYear bool) (bool, error) {
+	repoRoot, _ := GetRepoRoot(filepath.Dir(filePath))
+	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
+	return NeedsUpdateWithCache(filePath, targetHolder, configYear, forceCurrentYear, repoFirstYear, repoRoot)
+}
+
+// NeedsUpdateWithCache checks if a file would be updated without actually modifying it
+// If forceCurrentYear is true, forces end year to current year regardless of git history
+// repoFirstYear and repoRoot can be provided to avoid repeated git lookups when processing multiple files
+// Returns true if the file has copyrights matching targetHolder that need year updates
+func NeedsUpdateWithCache(filePath string, targetHolder string, configYear int, forceCurrentYear bool, repoFirstCommitYear int, repoRoot string) (bool, error) {
 	// Skip .copywrite.hcl config file
 	if filepath.Base(filePath) == ".copywrite.hcl" {
 		return false, nil
@@ -642,12 +725,14 @@ func NeedsUpdate(filePath string, targetHolder string, configYear int, forceCurr
 	}
 
 	currentYear := time.Now().Year()
-	lastCommitYear, _ := getFileLastCommitYear(filePath)
-	repoFirstYear, _ := GetRepoFirstCommitYear(filepath.Dir(filePath))
+	lastCommitYear := 0
+	if !forceCurrentYear {
+		lastCommitYear, _ = getFileLastCommitYear(filePath, repoRoot)
+	}
 
 	// Evaluate which copyrights need updating
 	updates := evaluateCopyrightUpdates(
-		copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstYear,
+		copyrights, targetHolder, configYear, lastCommitYear, currentYear, forceCurrentYear, repoFirstCommitYear,
 	)
 
 	return len(updates) > 0, nil

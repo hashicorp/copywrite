@@ -98,6 +98,7 @@ config, see the "copywrite init" command.`,
 			".github/dependabot.yml",
 			"**/node_modules/**",
 			".copywrite.hcl",
+			".git/**/*.pack",
 		}
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
@@ -181,12 +182,18 @@ func init() {
 // updateExistingHeaders walks through files and updates copyright headers based on config and git history
 // Returns the count of updated files, a boolean indicating if any file was updated, and the LICENSE file path (if found)
 func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun bool) (int, bool, string) {
+	_ = licensecheck.InitializeGitCache(".")
 	targetHolder := conf.Project.CopyrightHolder
 	if targetHolder == "" {
 		targetHolder = "IBM Corp."
 	}
 
 	configYear := conf.Project.CopyrightYear
+	repoFirstYear, _ := licensecheck.GetRepoFirstCommitYear(".")
+
+	// Open git repository once for all file operations
+	repoRoot, _ := licensecheck.GetRepoRoot(".")
+
 	updatedCount := 0
 	anyFileUpdated := false
 	var licensePath string
@@ -211,6 +218,7 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 	for i := 0; i < workers; i++ {
 		go func() {
 			defer wg.Done()
+
 			for path := range ch {
 				// capture base and skip LICENSE files here as well
 				base := filepath.Base(path)
@@ -224,14 +232,14 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 				}
 
 				if !dryRun {
-					updated, err := licensecheck.UpdateCopyrightHeader(path, targetHolder, configYear, false)
+					updated, err := licensecheck.UpdateCopyrightHeaderWithCache(path, targetHolder, configYear, false, repoFirstYear, repoRoot)
 					if err == nil && updated {
 						cmd.Printf("  %s\n", path)
 						atomic.AddInt64(&updatedCount64, 1)
 						atomic.StoreInt32(&anyFileUpdatedFlag, 1)
 					}
 				} else {
-					needsUpdate, err := licensecheck.NeedsUpdate(path, targetHolder, configYear, false)
+					needsUpdate, err := licensecheck.NeedsUpdateWithCache(path, targetHolder, configYear, false, repoFirstYear, repoRoot)
 					if err == nil && needsUpdate {
 						cmd.Printf("  %s\n", path)
 						atomic.AddInt64(&updatedCount64, 1)
@@ -244,13 +252,13 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 
 	// Producer: walk the tree and push files onto the channel
 	go func() {
-		_ = filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() {
+		_ = filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+			// Check if file should be ignored
+			if addlicense.FileMatches(path, ignoredPatterns) {
 				return nil
 			}
 
-			// Check if file should be ignored
-			if addlicense.FileMatches(path, ignoredPatterns) {
+			if err != nil || d.IsDir() {
 				return nil
 			}
 
@@ -284,16 +292,20 @@ func updateLicenseFile(cmd *cobra.Command, licensePath string, anyFileUpdated bo
 		targetHolder = "IBM Corp."
 	}
 
+	repoFirstYear, _ := licensecheck.GetRepoFirstCommitYear(".")
 	configYear := conf.Project.CopyrightYear
+
+	// Open git repository for LICENSE file operations
+	repoRoot, _ := licensecheck.GetRepoRoot(".")
 
 	// Update LICENSE file, forcing current year if any file was updated
 	if !dryRun {
-		updated, err := licensecheck.UpdateCopyrightHeader(licensePath, targetHolder, configYear, anyFileUpdated)
+		updated, err := licensecheck.UpdateCopyrightHeaderWithCache(licensePath, targetHolder, configYear, anyFileUpdated, repoFirstYear, repoRoot)
 		if err == nil && updated {
 			cmd.Printf("\nUpdated LICENSE file: %s\n", licensePath)
 		}
 	} else {
-		needsUpdate, err := licensecheck.NeedsUpdate(licensePath, targetHolder, configYear, anyFileUpdated)
+		needsUpdate, err := licensecheck.NeedsUpdateWithCache(licensePath, targetHolder, configYear, anyFileUpdated, repoFirstYear, repoRoot)
 		if err == nil && needsUpdate {
 			cmd.Printf("\n[DRY RUN] Would update LICENSE file: %s\n", licensePath)
 		}
