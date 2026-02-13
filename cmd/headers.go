@@ -95,10 +95,11 @@ config, see the "copywrite init" command.`,
 		// Append default ignored search patterns (e.g., GitHub Actions workflows)
 		autoSkippedPatterns := []string{
 			".github/workflows/**",
+			".github/actions/**",
 			".github/dependabot.yml",
 			"**/node_modules/**",
 			".copywrite.hcl",
-			".git/**/*.pack",
+			".git/**",
 		}
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
