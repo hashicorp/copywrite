@@ -100,6 +100,9 @@ config, see the "copywrite init" command.`,
 			"**/node_modules/**",
 			".copywrite.hcl",
 			".git/**/*.pack",
+			".git/objects/**",
+			".git/refs/**",
+			".git/logs/**",
 		}
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
