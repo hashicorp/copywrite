@@ -518,7 +518,10 @@ func licenseHeader(path string, tmpl *template.Template, data LicenseData) ([]by
 		lic, err = executeTemplate(tmpl, data, "/**", " * ", " */")
 	case ".cc", ".cpp", ".cs", ".go", ".hh", ".hpp", ".m", ".mm", ".proto", ".rs", ".swift", ".dart", ".groovy", ".v", ".sv", ".lr":
 		lic, err = executeTemplate(tmpl, data, "", "// ", "")
-	case ".py", ".sh", ".bash", ".zsh", ".yaml", ".yml", ".dockerfile", "dockerfile", ".rb", "gemfile", ".ru", ".tcl", ".hcl", ".tf", ".tfvars", ".nomad", ".bzl", ".pl", ".pp", ".ps1", ".psd1", ".psm1", ".txtar", ".sentinel":
+	case ".py", ".sh", ".bash", ".zsh", ".yaml", ".yml", ".dockerfile", "dockerfile",
+		".rb", "gemfile", ".ru", ".tcl", ".hcl", ".tf", ".tfvars", ".nomad", ".bzl",
+		".pl", ".pp", ".ps1", ".psd1", ".psm1", ".txtar", ".sentinel",
+		".mk", "makefile", "gnumakefile":
 		lic, err = executeTemplate(tmpl, data, "", "# ", "")
 	case ".el", ".lisp":
 		lic, err = executeTemplate(tmpl, data, "", ";; ", "")
