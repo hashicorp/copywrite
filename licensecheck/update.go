@@ -414,7 +414,7 @@ func GetRepoRoot(workingDir string) (string, error) {
 // - The year of the first commit in the repository (or 0 if not found)
 // - An error if the git command fails
 func buildRepositoryCache(repoRoot string) (map[string]int, int, error) {
-	cmd := exec.Command("git", "log", "--format=format:%ad", "--date=format:%Y", "--name-only")
+	cmd := exec.Command("git", "log", "--format=format:__CW_YEAR__=%ad", "--date=format:%Y", "--name-only")
 	cmd.Dir = repoRoot
 	output, err := cmd.Output()
 	if err != nil {
@@ -482,6 +482,14 @@ func getFileLastCommitYear(filePath string, repoRoot string) (int, error) {
 	absPath, err := filepath.Abs(filePath)
 	if err != nil {
 		return 0, err
+	}
+
+	// Resolve symlinks to get the canonical path. This is important on systems
+	// like macOS where /tmp is a symlink to /private/tmp. The git repo root
+	// (from 'git rev-parse --show-toplevel') uses the real path, so absPath
+	// must also be resolved before computing the relative path.
+	if resolved, err := filepath.EvalSymlinks(absPath); err == nil {
+		absPath = resolved
 	}
 
 	// Calculate relative path from repo root to file
