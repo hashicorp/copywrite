@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2023, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package config
@@ -6,7 +6,11 @@ package config
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/hcl"
@@ -88,7 +92,7 @@ func New() (*Config, error) {
 	// Preload default config values
 	defaults := map[string]interface{}{
 		"schema_version":           1,
-		"project.copyright_holder": "HashiCorp, Inc.",
+		"project.copyright_holder": "IBM Corp.",
 	}
 	err := c.LoadConfMap(defaults)
 	if err != nil {
@@ -236,4 +240,66 @@ func (c *Config) Sprint() string {
 // If LoadConfigFile() has not been called, it will return an empty string.
 func (c *Config) GetConfigPath() string {
 	return c.absCfgPath
+}
+
+// detectFirstCommitYear attempts to auto-detect the first commit year from git history.
+// Returns 0 if detection fails or git is not available.
+func (c *Config) detectFirstCommitYear() int {
+	// Try to get the year of the first commit
+	cmd := exec.Command("git", "log", "--reverse", "--format=%ad", "--date=format:%Y")
+	cmd.Dir = filepath.Dir(c.absCfgPath)
+
+	// If no config path set, use current directory
+	if c.absCfgPath == "" {
+		if wd, err := os.Getwd(); err == nil {
+			cmd.Dir = wd
+		}
+	}
+
+	output, err := cmd.Output()
+	if err != nil {
+		// Git command failed (not a git repo, git not installed, etc.)
+		return 0
+	}
+
+	// Parse the first line (first commit year)
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 0 || lines[0] == "" {
+		return 0
+	}
+
+	year, err := strconv.Atoi(strings.TrimSpace(lines[0]))
+	if err != nil || year < 1970 || year > time.Now().Year() {
+		// Invalid year
+		return 0
+	}
+
+	return year
+}
+
+// FormatCopyrightYears returns a formatted year string for copyright statements.
+// If copyrightYear is 0, attempts to auto-detect from git history.
+// If copyrightYear equals current year, returns current year only.
+// Otherwise returns "copyrightYear, currentYear" format (e.g., "2023, 2025").
+func (c *Config) FormatCopyrightYears() string {
+	currentYear := time.Now().Year()
+	copyrightYear := c.Project.CopyrightYear
+
+	// If no copyright year is set, try auto-detection from git
+	if copyrightYear == 0 {
+		if detectedYear := c.detectFirstCommitYear(); detectedYear > 0 {
+			copyrightYear = detectedYear
+		} else {
+			// Fallback to current year if auto-detection fails
+			return strconv.Itoa(currentYear)
+		}
+	}
+
+	// If copyright year equals current year, return single year
+	if copyrightYear == currentYear {
+		return strconv.Itoa(currentYear)
+	}
+
+	// Return year range: "startYear, currentYear"
+	return fmt.Sprintf("%d, %d", copyrightYear, currentYear)
 }
