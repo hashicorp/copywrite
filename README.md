@@ -3,8 +3,11 @@
 This repo provides utilities for managing copyright headers and license files
 across many repos at scale.
 
-You can use it to add or validate copyright headers on source code files, add a
-LICENSE file to a repo, report on what licenses repos are using, and more.
+Features:
+- Add or validate copyright headers on source code files
+- Add and/or manage LICENSE files with git-aware copyright year detection
+- Report on licenses used across multiple repositories
+- Automate compliance checks in CI/CD pipelines
 
 ## Getting Started
 
@@ -33,7 +36,7 @@ Usage:
   copywrite [command]
 
 Common Commands:
-  headers     Adds missing copyright headers to all source code files
+  headers     Adds missing copyright headers and updates existing headers' year information.
   init        Generates a .copywrite.hcl config for a new project
   license     Validates that a LICENSE file is present and remediates any issues if found
 
@@ -52,6 +55,21 @@ Flags:
 Use "copywrite [command] --help" for more information about a command.
 ```
 
+### Automatic Copyright Holder Migration
+
+The `copywrite headers` command automatically detects and updates old copyright
+holders (such as "HashiCorp, Inc.") to the configured holder (default: "IBM Corp.")
+while preserving existing year information and updating year ranges.
+
+This ensures that:
+
+- Old headers from merged PRs are automatically corrected
+- Manually copied headers are updated
+- Year ranges are kept current
+
+No additional flags are needed - the migration happens automatically as part of
+the normal headers command execution.
+
 To get started with Copywrite on a new project, run `copywrite init`, which will
 interactively help generate a `.copywrite.hcl` config file to add to Git.
 
@@ -62,8 +80,18 @@ scan all files in your repo and copyright headers to any that are missing:
 copywrite headers --spdx "MPL-2.0"
 ```
 
-You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined
-[here](#config-structure).
+The `copywrite license` command validates and manages LICENSE files with git-aware copyright years:
+
+```sh
+copywrite license --spdx "MPL-2.0"
+```
+
+**Copyright Year Behavior:**
+- **Start Year**: Auto-detected from config file and if not found defaults to repository's first commit
+- **End Year**: Set to current year when an update is triggered (git history only determines if update is needed)
+- **Update Trigger**: Git detects if source code file was modified since the copyright end year
+
+You may omit the `--spdx` flag if you add a `.copywrite.hcl` config, as outlined [here](#config-structure).
 
 ### `--plan` Flag
 
@@ -71,6 +99,23 @@ Both the `headers` and `license` commands allow you to use a `--plan` flag, whic
 performs a dry-run and will outline what changes would be made. This flag also
 returns a non-zero exit code if any changes are needed. As such, it can be used
 to validate if a repo is in compliance or not.
+
+## Technical Details
+
+### Copyright Year Logic
+
+**Source File Headers:**
+- End year: Set to current year when file's source code is modified
+- Git history determines if update is needed (compares file's last commit year to copyright end year)
+- When triggered, end year updates to current year
+
+**LICENSE Files:**
+- End year: Set to current year when any project file is modified
+- Git history determines if update is needed (compares repo's last commit year to copyright end year)
+- When triggered, end year updates to current year
+- Preserves historical accuracy for archived projects (no forced updates)
+
+**Key Distinction:** Git history is used as a trigger to determine *whether* an update is needed, but the actual end year value is always set to the current year when an update occurs.
 
 ## Config Structure
 
@@ -94,11 +139,16 @@ project {
   license = "MPL-2.0"
 
   # (OPTIONAL) Represents the copyright holder used in all statements
-  # Default: HashiCorp, Inc.
+  # Default: IBM Corp.
   # copyright_holder = ""
 
   # (OPTIONAL) Represents the year that the project initially began
-  # Default: <the year the repo was first created>
+  # This is used as the starting year in copyright statements
+  # If set and different from current year, headers will show: "copyright_year, year-2"
+  # If set and same as year-2, headers will show: "copyright_year"
+  # If not set (0), the tool will auto-detect from git history (first commit year)
+  # If auto-detection fails, it will fallback to current year only
+  # Default: 0 (auto-detect)
   # copyright_year = 0
 
   # (OPTIONAL) A list of globs that should not have copyright or license headers .
@@ -142,6 +192,10 @@ automatically installs the binary and adds it to your `$PATH` so you can call it
 freely in later steps.
 
 ```yaml
+  - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+    with:
+        fetch-depth: 0 # As git operations are involved, we will need a deep clone of the repo.
+
   - name: Setup Copywrite
     uses: hashicorp/setup-copywrite@867a1a2a064a0626db322392806428f7dc59cb3e # v1.1.2
 

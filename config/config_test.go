@@ -1,12 +1,16 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2023, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package config
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/knadh/koanf"
 	"github.com/spf13/pflag"
@@ -26,8 +30,8 @@ func Test_New(t *testing.T) {
 
 		// Validate the default value(s)
 		assert.Equal(t, 1, actualOutput.SchemaVersion, "Schema Version defaults to 1")
-		assert.Equal(t, "HashiCorp, Inc.", actualOutput.Project.CopyrightHolder, "Copyright Holder defaults to 'HashiCorp, Inc.'")
-		assert.Equal(t, "project.copyright_holder -> HashiCorp, Inc.\nschema_version -> 1\n", actualOutput.Sprint(), "Koanf object gets updated appropriately with defaults")
+		assert.Equal(t, "IBM Corp.", actualOutput.Project.CopyrightHolder, "Copyright Holder defaults to 'IBM Corp.'")
+		assert.Equal(t, "project.copyright_holder -> IBM Corp.\nschema_version -> 1\n", actualOutput.Sprint(), "Koanf object gets updated appropriately with defaults")
 	})
 }
 
@@ -48,7 +52,7 @@ func Test_LoadConfMap(t *testing.T) {
 		globalKoanf:   koanf.New(delim),
 		SchemaVersion: 12,
 		Project: Project{
-			CopyrightHolder: "HashiCorp, Inc.",
+			CopyrightHolder: "IBM Corp.",
 			CopyrightYear:   9001,
 			License:         "MPL-2.0",
 		},
@@ -73,10 +77,11 @@ func Test_LoadConfMap(t *testing.T) {
 func Test_LoadCommandFlags(t *testing.T) {
 	// Map command flags to config keys
 	mapping := map[string]string{
-		`schemaVersion`: `schema_version`,
-		`spdx`:          `project.license`,
-		`year`:          `project.copyright_year`,
-		`ignoredRepos`:  `dispatch.ignored_repos`,
+		`schemaVersion`:   `schema_version`,
+		`spdx`:            `project.license`,
+		`year`:            `project.copyright_year`,
+		`copyrightHolder`: `project.copyright_holder`,
+		`ignoredRepos`:    `dispatch.ignored_repos`,
 	}
 
 	tests := []struct {
@@ -92,7 +97,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 1,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
 					License:         "MPL-2.0",
 				},
@@ -108,7 +113,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 12,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
 					License:         "MPL-2.0",
 				},
@@ -124,7 +129,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 33,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
 					License:         "MPL-2.0",
 				},
@@ -140,7 +145,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 33,
 				Project: Project{
-					CopyrightHolder: "HashiCorp, Inc.",
+					CopyrightHolder: "IBM Corp.",
 					CopyrightYear:   9001,
 					License:         "MPL-2.0",
 				},
@@ -157,6 +162,7 @@ func Test_LoadCommandFlags(t *testing.T) {
 			flags.Int("schemaVersion", 12, "Config Schema Version")
 			flags.String("spdx", "MPL-2.0", "SPDX License Identifier")
 			flags.Int("year", 9001, "Year of copyright")
+			flags.String("copyrightHolder", "IBM Corp.", "Copyright Holder")
 			flags.StringArray("ignoredRepos", []string{"foo", "bar"}, "repos to ignore")
 			err := flags.Parse(tt.args)
 			assert.Nil(t, err, "If this broke, the test is wrong, not the function under test")
@@ -366,4 +372,90 @@ func Test_GetConfigPath(t *testing.T) {
 
 	abs, _ := filepath.Abs(cfgPath)
 	assert.Equal(t, abs, actualOutput.GetConfigPath(), "Loaded config should return abs file path")
+}
+
+func Test_FormatCopyrightYears(t *testing.T) {
+	currentYear := time.Now().Year()
+
+	tests := []struct {
+		description    string
+		copyrightYear  int
+		expectedOutput string
+	}{
+		{
+			description:    "Copyright year equals current year should return single year",
+			copyrightYear:  currentYear,
+			expectedOutput: strconv.Itoa(currentYear),
+		},
+		{
+			description:    "Copyright year before current year should return year range",
+			copyrightYear:  2023,
+			expectedOutput: fmt.Sprintf("2023, %d", currentYear),
+		},
+		{
+			description:    "Old copyright year should return year range",
+			copyrightYear:  2018,
+			expectedOutput: fmt.Sprintf("2018, %d", currentYear),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.description, func(t *testing.T) {
+			c := MustNew()
+			c.Project.CopyrightYear = tt.copyrightYear
+
+			actualOutput := c.FormatCopyrightYears()
+
+			assert.Equal(t, tt.expectedOutput, actualOutput, tt.description)
+		})
+	}
+}
+
+func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
+	currentYear := time.Now().Year()
+
+	t.Run("Auto-detect from git when copyright_year not set", func(t *testing.T) {
+		c := MustNew()
+		c.Project.CopyrightYear = 0
+
+		// Set config path to this repo's directory for git detection
+		c.absCfgPath = filepath.Join(getCurrentDir(t), ".copywrite.hcl")
+
+		actualOutput := c.FormatCopyrightYears()
+
+		// Should auto-detect and return a year range (this repo was created before 2025)
+		// The format should be "YYYY, currentYear" where YYYY < currentYear
+		assert.Contains(t, actualOutput, ",", "Should contain year range when auto-detected from git")
+		assert.Contains(t, actualOutput, strconv.Itoa(currentYear), "Should contain current year")
+
+		// Parse and validate the detected year
+		parts := strings.Split(actualOutput, ", ")
+		if len(parts) == 2 {
+			detectedYear, err := strconv.Atoi(parts[0])
+			assert.Nil(t, err, "First part should be a valid year")
+			assert.True(t, detectedYear >= 2020 && detectedYear <= currentYear,
+				"Detected year should be reasonable (between 2020 and current year)")
+		}
+	})
+
+	t.Run("Fallback to current year when git not available", func(t *testing.T) {
+		c := MustNew()
+		c.Project.CopyrightYear = 0
+
+		// Set config path to non-existent directory (git will fail)
+		c.absCfgPath = "/nonexistent/path/.copywrite.hcl"
+
+		actualOutput := c.FormatCopyrightYears()
+
+		// Should fallback to current year only
+		assert.Equal(t, strconv.Itoa(currentYear), actualOutput,
+			"Should fallback to current year when git detection fails")
+	})
+}
+
+// Helper function to get current directory
+func getCurrentDir(t *testing.T) string {
+	dir, err := os.Getwd()
+	assert.Nil(t, err, "Should be able to get current directory")
+	return dir
 }

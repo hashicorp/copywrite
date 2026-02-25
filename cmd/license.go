@@ -1,4 +1,4 @@
-// Copyright (c) HashiCorp, Inc.
+// Copyright IBM Corp. 2023, 2025
 // SPDX-License-Identifier: MPL-2.0
 
 package cmd
@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/hashicorp/copywrite/github"
 	"github.com/hashicorp/copywrite/licensecheck"
@@ -64,10 +65,14 @@ var licenseCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		cmd.Printf("Licensing under the following terms: %s\n", conf.Project.License)
-		cmd.Printf("Using year of initial copyright: %v\n", conf.Project.CopyrightYear)
+
+		// Determine appropriate copyright years for LICENSE file
+		licenseYears := determineLicenseCopyrightYears(dirPath)
+
+		cmd.Printf("Using copyright years: %v\n", licenseYears)
 		cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
 
-		copyright := "Copyright (c) " + strconv.Itoa(conf.Project.CopyrightYear) + " " + conf.Project.CopyrightHolder
+		copyright := "Copyright " + conf.Project.CopyrightHolder + " " + licenseYears
 
 		licenseFiles, err := licensecheck.FindLicenseFiles(dirPath)
 		if err != nil {
@@ -174,5 +179,36 @@ func init() {
 	// TODO: eventually, the copyrightYear should be dynamically inferred from the repo
 	licenseCmd.Flags().IntP("year", "y", 0, "Year that the copyright statement should include")
 	licenseCmd.Flags().StringP("spdx", "s", "", "SPDX License Identifier indicating what the LICENSE file should represent")
-	licenseCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"HashiCorp, Inc.\")")
+	licenseCmd.Flags().StringP("copyright-holder", "c", "", "Copyright holder (default \"IBM Corp.\")")
+}
+
+// determineLicenseCopyrightYears determines the appropriate copyright year range for LICENSE file
+// Uses git history to get the start year (first commit) and end year (last commit)
+func determineLicenseCopyrightYears(dirPath string) string {
+	currentYear := time.Now().Year()
+	startYear := conf.Project.CopyrightYear
+
+	// If no start year configured, try to auto-detect from git
+	if startYear == 0 {
+		if detectedYear, err := licensecheck.GetRepoFirstCommitYear(dirPath); err == nil && detectedYear > 0 {
+			startYear = detectedYear
+		} else {
+			// Fallback to current year
+			return strconv.Itoa(currentYear)
+		}
+	}
+
+	// Determine end year from repository's last commit year
+	endYear := currentYear // Default fallback
+	if lastRepoCommitYear, err := licensecheck.GetRepoLastCommitYear(dirPath); err == nil && lastRepoCommitYear > 0 && lastRepoCommitYear <= currentYear {
+		endYear = lastRepoCommitYear
+	}
+
+	// If start year equals end year, return single year
+	if startYear == endYear {
+		return strconv.Itoa(endYear)
+	}
+
+	// Return year range: "startYear, endYear"
+	return fmt.Sprintf("%d, %d", startYear, endYear)
 }

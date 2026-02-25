@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2023, 2025
 # SPDX-License-Identifier: MPL-2.0
 
 ---
@@ -6,7 +6,7 @@ repos:
   - repo: https://github.com/hashicorp/copywrite
     rev: v0.15.0 # Use any release tag
     hooks:
-      - id: copywrite-headers
+      - id: add-headers
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
