@@ -641,7 +641,27 @@ func hasLicense(b []byte) bool {
 	if len(b) < 1000 {
 		n = len(b)
 	}
-	return bytes.Contains(bytes.ToLower(b[:n]), []byte("copyright")) ||
-		bytes.Contains(bytes.ToLower(b[:n]), []byte("mozilla public")) ||
-		bytes.Contains(bytes.ToLower(b[:n]), []byte("spdx-license-identifier"))
+
+	// Default conditions
+	defaultTerms := []string{"hashicorp, inc.", "mozilla public", "spdx-license-identifier"}
+
+	// Load conditions from config file
+	configPath := "../LicenceCopywrite.json"
+	file, err := os.ReadFile(configPath)
+	if err == nil {
+		var customTerms []string
+		if json.Unmarshal(file, &customTerms) == nil && len(customTerms) > 0 {
+			defaultTerms = customTerms
+		}
+	}
+
+	// Check for license terms
+	content := bytes.ToLower(b[:n])
+	for _, term := range defaultTerms {
+		if bytes.Contains(content, []byte(strings.ToLower(term))) {
+			return true
+		}
+	}
+	return false
 }
+
