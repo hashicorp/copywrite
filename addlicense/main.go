@@ -641,7 +641,14 @@ func hasLicense(b []byte) bool {
 	if len(b) < 1000 {
 		n = len(b)
 	}
-	return bytes.Contains(bytes.ToLower(b[:n]), []byte("copyright")) ||
-		bytes.Contains(bytes.ToLower(b[:n]), []byte("mozilla public")) ||
-		bytes.Contains(bytes.ToLower(b[:n]), []byte("spdx-license-identifier"))
+	// Convert to lowercase for case-insensitive matching
+	content := bytes.ToLower(b[:n])
+
+	// Check for different variations of copyright/license headers
+	return bytes.Contains(content, []byte("copyright")) ||
+		bytes.Contains(content, []byte("copyright (c)")) ||
+		bytes.Contains(content, []byte("the opentofu authors")) ||
+		bytes.Contains(content, []byte("hashicorp, inc.")) ||
+		bytes.Contains(content, []byte("mozilla public")) ||
+		bytes.Contains(content, []byte("spdx-license-identifier"))
 }
