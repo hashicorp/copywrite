@@ -25,7 +25,7 @@ require (
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/cli/safeexec v1.0.0 // indirect
-	github.com/cloudflare/circl v1.6.1 // indirect
+	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
@@ -43,7 +43,6 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
