@@ -1,6 +1,6 @@
 module github.com/hashicorp/copywrite
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
@@ -43,7 +43,6 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
@@ -52,7 +51,7 @@ require (
 )
 
 require (
-	github.com/cli/go-gh/v2 v2.12.2
+	github.com/cli/go-gh/v2 v2.13.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-github/v45 v45.2.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
