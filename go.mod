@@ -43,7 +43,6 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
@@ -56,6 +55,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-github/v45 v45.2.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/samber/lo v1.51.0
+	github.com/samber/lo v1.52.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
