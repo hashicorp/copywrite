@@ -99,6 +99,7 @@ config, see the "copywrite init" command.`,
 			"**/node_modules/**",
 			".copywrite.hcl",
 			".git/**/*.pack",
+			"**/.terraform.lock.hcl",
 		}
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
