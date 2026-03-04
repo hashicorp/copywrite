@@ -50,6 +50,16 @@ Flags:
 
 `
 
+// AutoSkippedPatterns represent default ignored search patterns (e.g., GitHub Actions workflows)
+var AutoSkippedPatterns = []string{
+	".github/workflows/**",
+	".github/dependabot.yml",
+	"**/node_modules/**",
+	".copywrite.hcl",
+	".git/**/*.pack",
+	"**/.terraform.lock.hcl",
+}
+
 var (
 	skipExtensionFlags stringSlice
 	ignorePatterns     stringSlice
