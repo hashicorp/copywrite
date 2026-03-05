@@ -193,6 +193,10 @@ freely in later steps.
 
 Note: Using fetch-depth parameter is mandatory as the tool will not be able to effectively resolve the year information without it.
 
+**Impact of not updating year information:**
+If year information is not updated time to time, then the repo can be out of compliance. IBM policy suggests keeping source code files updated with latest year of code changes in a source code file.
+
+
 ```yaml
   - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
     with:
