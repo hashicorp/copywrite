@@ -7,7 +7,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.5.0
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/jedib0t/go-pretty/v6 v6.6.8
+	github.com/jedib0t/go-pretty/v6 v6.7.8
 	github.com/knadh/koanf v1.5.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mergestat/timediff v0.0.4
