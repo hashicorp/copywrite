@@ -55,6 +55,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-github/v45 v45.2.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/samber/lo v1.51.0
+	github.com/samber/lo v1.53.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
