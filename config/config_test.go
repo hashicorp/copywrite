@@ -39,6 +39,7 @@ func Test_LoadConfMap(t *testing.T) {
 	mp := map[string]interface{}{
 		"schema_version":         12,
 		"project.copyright_year": 9001,
+		"project.ignore_year2":   true,
 		"project.license":        "MPL-2.0",
 		"dispatch.ignored_repos": []string{"foo", "bar"},
 	}
@@ -54,6 +55,7 @@ func Test_LoadConfMap(t *testing.T) {
 		Project: Project{
 			CopyrightHolder: "IBM Corp.",
 			CopyrightYear:   9001,
+			IgnoreYear2:     true,
 			License:         "MPL-2.0",
 		},
 		Dispatch: Dispatch{
@@ -227,15 +229,6 @@ func Test_LoadConfigFile(t *testing.T) {
 			expectedOutput: &Config{
 				Project: Project{
 					License: "NOT_A_VALID_SPDX",
-				},
-			},
-		},
-		{
-			description:  "File with project.ignore_year2 populates accordingly",
-			inputCfgPath: "testdata/project/ignore_year2_only.hcl",
-			expectedOutput: &Config{
-				Project: Project{
-					IgnoreYear2: true,
 				},
 			},
 		},
