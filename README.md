@@ -4,6 +4,7 @@ This repo provides utilities for managing copyright headers and license files
 across many repos at scale.
 
 Features:
+
 - Add or validate copyright headers on source code files
 - Add and/or manage LICENSE files with git-aware copyright year detection
 - Report on licenses used across multiple repositories
@@ -87,6 +88,7 @@ copywrite license --spdx "MPL-2.0"
 ```
 
 **Copyright Year Behavior:**
+
 - **Start Year**: Auto-detected from config file and if not found defaults to repository's first commit
 - **End Year**: Set to current year when an update is triggered (git history only determines if update is needed)
 - **Update Trigger**: Git detects if source code file was modified since the copyright end year
@@ -105,11 +107,14 @@ to validate if a repo is in compliance or not.
 ### Copyright Year Logic
 
 **Source File Headers:**
+
 - End year: Set to current year when file's source code is modified
 - Git history determines if update is needed (compares file's last commit year to copyright end year)
 - When triggered, end year updates to current year
+- If project.ignore_year2 is true, second-year updates are skipped
 
 **LICENSE Files:**
+
 - End year: Set to current year when any project file is modified
 - Git history determines if update is needed (compares repo's last commit year to copyright end year)
 - When triggered, end year updates to current year
@@ -150,6 +155,11 @@ project {
   # If auto-detection fails, it will fallback to current year only
   # Default: 0 (auto-detect)
   # copyright_year = 0
+
+  # (OPTIONAL) Ignore updates to the second year in copyright ranges.
+  # This does not change how start year is resolved.
+  # Default: false
+  # ignore_year2 = false
 
   # (OPTIONAL) A list of globs that should not have copyright or license headers .
   # Supports doublestar glob patterns for more flexibility in defining which
@@ -195,7 +205,6 @@ Note: Using fetch-depth parameter is mandatory as the tool will not be able to e
 
 **Impact of not updating year information:**
 If year information is not updated time to time, then the repo can be out of compliance. IBM policy suggests keeping source code files updated with latest year of code changes in a source code file.
-
 
 ```yaml
   - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7

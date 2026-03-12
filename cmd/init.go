@@ -135,6 +135,11 @@ project {
   license        = "{{.Project.License}}"
   copyright_year = {{.Project.CopyrightYear}}
 
+	# (OPTIONAL) If true, ignore updating the second year in copyright ranges.
+	# Start-year logic remains unchanged.
+	# Default: false
+	# ignore_year2 = false
+
   # (OPTIONAL) A list of globs that should not have copyright/license headers.
   # Supports doublestar glob patterns for more flexibility in defining which
   # files or folders should be ignored

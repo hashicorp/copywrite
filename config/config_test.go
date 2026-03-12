@@ -231,6 +231,15 @@ func Test_LoadConfigFile(t *testing.T) {
 			},
 		},
 		{
+			description:  "File with project.ignore_year2 populates accordingly",
+			inputCfgPath: "testdata/project/ignore_year2_only.hcl",
+			expectedOutput: &Config{
+				Project: Project{
+					IgnoreYear2: true,
+				},
+			},
+		},
+		{
 			description:  "File with partial project populates accordingly",
 			inputCfgPath: "testdata/project/partial_project.hcl",
 			expectedOutput: &Config{
@@ -409,6 +418,16 @@ func Test_FormatCopyrightYears(t *testing.T) {
 			assert.Equal(t, tt.expectedOutput, actualOutput, tt.description)
 		})
 	}
+
+	t.Run("Ignore year2 should emit single start year", func(t *testing.T) {
+		c := MustNew()
+		c.Project.CopyrightYear = 2023
+		c.Project.IgnoreYear2 = true
+
+		actualOutput := c.FormatCopyrightYears()
+
+		assert.Equal(t, "2023", actualOutput)
+	})
 }
 
 func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
@@ -450,6 +469,20 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 		// Should fallback to current year only
 		assert.Equal(t, strconv.Itoa(currentYear), actualOutput,
 			"Should fallback to current year when git detection fails")
+	})
+}
+
+func Test_FormatCopyrightYearsForNewHeaders(t *testing.T) {
+	currentYear := time.Now().Year()
+
+	t.Run("Ignore year2 should not affect new header format", func(t *testing.T) {
+		c := MustNew()
+		c.Project.CopyrightYear = 2021
+		c.Project.IgnoreYear2 = true
+
+		actualOutput := c.FormatCopyrightYearsForNewHeaders()
+
+		assert.Equal(t, fmt.Sprintf("2021, %d", currentYear), actualOutput)
 	})
 }
 
