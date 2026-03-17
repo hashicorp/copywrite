@@ -49,7 +49,7 @@ require (
 )
 
 require (
-	github.com/cli/go-gh/v2 v2.12.2
+	github.com/cli/go-gh/v2 v2.13.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-github/v45 v45.2.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
