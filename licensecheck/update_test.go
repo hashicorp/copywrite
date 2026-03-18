@@ -861,14 +861,14 @@ func TestCalculateYearUpdates(t *testing.T) {
 		assert.Equal(t, currentYear, newEnd)
 	})
 
-	t.Run("Ignore year2 skips end year updates", func(t *testing.T) {
-		info := &CopyrightInfo{StartYear: 2020, EndYear: currentYear - 2}
+	t.Run("Ignore year1 skips start year updates", func(t *testing.T) {
+		info := &CopyrightInfo{StartYear: 2023, EndYear: 2023}
 		shouldUpdate, newStart, newEnd := calculateYearUpdates(
-			info, 2020, currentYear, currentYear, true, true,
+			info, 2020, 2023, currentYear, false, true,
 		)
 		assert.False(t, shouldUpdate)
-		assert.Equal(t, 2020, newStart)
-		assert.Equal(t, currentYear-2, newEnd)
+		assert.Equal(t, 2023, newStart)
+		assert.Equal(t, 2023, newEnd)
 	})
 }
 
@@ -925,26 +925,56 @@ func TestUpdateCopyrightHeader_HandlebarsFiles(t *testing.T) {
 	assert.False(t, needsUpdate2, "Should not need another update after being updated to current year")
 }
 
-func TestUpdateCopyrightHeader_IgnoreYear2(t *testing.T) {
+
+func TestUpdateCopyrightHeader_IgnoreYear1(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.go")
 
-	initial := `// Copyright IBM Corp. 2022, 2023
+	// Header has start year 2023 but canonical (config) year is 2020 — normally Condition 1 would update it.
+	initial := `// Copyright IBM Corp. 2023, 2023
 package main
 `
 	err := os.WriteFile(testFile, []byte(initial), 0644)
 	require.NoError(t, err)
 
-	needsUpdate, err := NeedsUpdate(testFile, "IBM Corp.", 2022, true, true)
+	needsUpdate, err := NeedsUpdate(testFile, "IBM Corp.", 2020, false, true)
 	require.NoError(t, err)
-	assert.False(t, needsUpdate, "ignore_year2 should suppress end-year-only updates")
+	assert.False(t, needsUpdate, "ignore_year1 should suppress start-year-only updates")
 
-	modified, err := UpdateCopyrightHeader(testFile, "IBM Corp.", 2022, true, true)
+	modified, err := UpdateCopyrightHeader(testFile, "IBM Corp.", 2020, false, true)
 	require.NoError(t, err)
-	assert.False(t, modified, "ignore_year2 should avoid mutating end year")
+	assert.False(t, modified, "ignore_year1 should avoid mutating start year")
 }
 
-func TestUpdateCopyrightHeader_IgnoreYear2_NoYearsInHeader(t *testing.T) {
+// TestUpdateCopyrightHeader_IgnoreYear1_NoCopyrightText verifies that a file with NO
+// copyright text at all is left untouched by UpdateCopyrightHeader even when ignore_year1
+// is set. New-file header creation is delegated to addlicense, which always uses the
+// config year — ignore_year1 must not prevent that from working.
+func TestUpdateCopyrightHeader_IgnoreYear1_NoCopyrightText(t *testing.T) {
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.go")
+
+	// File with no copyright line at all (brand-new file scenario).
+	initial := `package main
+
+func main() {}
+`
+	err := os.WriteFile(testFile, []byte(initial), 0644)
+	require.NoError(t, err)
+
+	// UpdateCopyrightHeader should do nothing — there is nothing to update.
+	// The header will be added by addlicense using the config year (2015).
+	modified, err := UpdateCopyrightHeader(testFile, "IBM Corp.", 2015, false, true)
+	require.NoError(t, err)
+	assert.False(t, modified, "file with no copyright should not be modified by UpdateCopyrightHeader")
+
+	// File content must remain unchanged.
+	content, err := os.ReadFile(testFile)
+	require.NoError(t, err)
+	assert.Equal(t, initial, string(content))
+}
+
+func TestUpdateCopyrightHeader_IgnoreYear1_NoYearsInHeader(t *testing.T) {
 	currentYear := time.Now().Year()
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.go")
@@ -957,7 +987,7 @@ package main
 
 	modified, err := UpdateCopyrightHeader(testFile, "IBM Corp.", 2021, false, true)
 	require.NoError(t, err)
-	assert.True(t, modified, "headers without years should be normalized to include year1 and year2")
+	assert.True(t, modified, "headers without years should be normalized even when ignore_year1 is set")
 
 	content, err := os.ReadFile(testFile)
 	require.NoError(t, err)

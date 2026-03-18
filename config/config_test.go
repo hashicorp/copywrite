@@ -39,7 +39,7 @@ func Test_LoadConfMap(t *testing.T) {
 	mp := map[string]interface{}{
 		"schema_version":         12,
 		"project.copyright_year": 9001,
-		"project.ignore_year2":   true,
+		"project.ignore_year1":   true,
 		"project.license":        "MPL-2.0",
 		"dispatch.ignored_repos": []string{"foo", "bar"},
 	}
@@ -55,7 +55,7 @@ func Test_LoadConfMap(t *testing.T) {
 		Project: Project{
 			CopyrightHolder: "IBM Corp.",
 			CopyrightYear:   9001,
-			IgnoreYear2:     true,
+			IgnoreYear1:     true,
 			License:         "MPL-2.0",
 		},
 		Dispatch: Dispatch{
@@ -412,15 +412,6 @@ func Test_FormatCopyrightYears(t *testing.T) {
 		})
 	}
 
-	t.Run("Ignore year2 should emit single start year", func(t *testing.T) {
-		c := MustNew()
-		c.Project.CopyrightYear = 2023
-		c.Project.IgnoreYear2 = true
-
-		actualOutput := c.FormatCopyrightYears()
-
-		assert.Equal(t, "2023", actualOutput)
-	})
 }
 
 func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
@@ -465,18 +456,20 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 	})
 }
 
-func Test_FormatCopyrightYearsForNewHeaders(t *testing.T) {
+// Test_FormatCopyrightYearsForNewHeaders verifies that ignore_year1 does NOT suppress
+// the config year when creating brand-new copyright headers. New files always receive
+// the full "configYear, currentYear" string from the .hcl copyright_year setting.
+func Test_FormatCopyrightYearsForNewHeaders_IgnoreYear1DoesNotAffectNewHeaders(t *testing.T) {
 	currentYear := time.Now().Year()
 
-	t.Run("Ignore year2 should not affect new header format", func(t *testing.T) {
-		c := MustNew()
-		c.Project.CopyrightYear = 2021
-		c.Project.IgnoreYear2 = true
+	c := MustNew()
+	c.Project.CopyrightYear = 2015
+	c.Project.IgnoreYear1 = true
 
-		actualOutput := c.FormatCopyrightYearsForNewHeaders()
+	actualOutput := c.FormatCopyrightYearsForNewHeaders()
 
-		assert.Equal(t, fmt.Sprintf("2021, %d", currentYear), actualOutput)
-	})
+	assert.Equal(t, fmt.Sprintf("2015, %d", currentYear), actualOutput,
+		"ignore_year1 must not affect new-header year format; config year should always be used")
 }
 
 // Helper function to get current directory

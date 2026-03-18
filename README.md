@@ -111,7 +111,7 @@ to validate if a repo is in compliance or not.
 - End year: Set to current year when file's source code is modified
 - Git history determines if update is needed (compares file's last commit year to copyright end year)
 - When triggered, end year updates to current year
-- If project.ignore_year2 is true, second-year updates are skipped
+- If project.ignore_year1 is true, start-year updates are skipped
 
 **LICENSE Files:**
 
@@ -156,10 +156,10 @@ project {
   # Default: 0 (auto-detect)
   # copyright_year = 0
 
-  # (OPTIONAL) Ignore updates to the second year in copyright ranges.
-  # This does not change how start year is resolved.
+  # (OPTIONAL) Ignore updates to the first year (start year) in copyright ranges.
+  # This does not change how end year is resolved.
   # Default: false
-  # ignore_year2 = false
+  # ignore_year1 = false
 
   # (OPTIONAL) A list of globs that should not have copyright or license headers .
   # Supports doublestar glob patterns for more flexibility in defining which
