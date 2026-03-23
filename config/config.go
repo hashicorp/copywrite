@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/hcl"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
 	"github.com/spf13/pflag"
 )
 
