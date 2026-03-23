@@ -263,6 +263,13 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 				return nil
 			}
 
+			// Skip symlinks — broken symlinks cause os.ReadFile to fail with
+			// "no such file or directory" because the target does not exist.
+			// Valid symlink targets will be visited directly during the walk.
+			if d.Type()&os.ModeSymlink != 0 {
+				return nil
+			}
+
 			// Non-ignored file -> enqueue for processing. If channel is full,
 			// this will block until a worker consumes entries, which is fine.
 			ch <- path

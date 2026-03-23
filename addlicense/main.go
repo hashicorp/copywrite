@@ -303,6 +303,13 @@ func walk(ch chan<- *file, start string, logger *log.Logger) error {
 		if fi.IsDir() {
 			return nil
 		}
+		// Skip symlinks — broken symlinks cause os.ReadFile to fail with
+		// "no such file or directory" because the target does not exist.
+		// Valid symlink targets will be visited directly during the walk.
+		if fi.Mode()&os.ModeSymlink != 0 {
+			logger.Printf("[DEBUG] skipping symlink: %s", path)
+			return nil
+		}
 		if FileMatches(path, ignorePatterns) {
 			// The [DEBUG] level is inferred by go-hclog as a debug statement
 			logger.Printf("[DEBUG] skipping: %s", path)
