@@ -119,6 +119,7 @@ to validate if a repo is in compliance or not.
 - Git history determines if update is needed (compares repo's last commit year to copyright end year)
 - When triggered, end year updates to current year
 - Preserves historical accuracy for archived projects (no forced updates)
+- If project.ignore_year1 is true, start-year updates are skipped (same behaviour as source file headers)
 
 **Key Distinction:** Git history is used as a trigger to determine *whether* an update is needed, but the actual end year value is always set to the current year when an update occurs.
 
