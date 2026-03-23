@@ -31,6 +31,7 @@ var (
 type Project struct {
 	CopyrightYear   int      `koanf:"copyright_year"`
 	CopyrightHolder string   `koanf:"copyright_holder"`
+	IgnoreYear1     bool     `koanf:"ignore_year1"`
 	HeaderIgnore    []string `koanf:"header_ignore"`
 	License         string   `koanf:"license"`
 
@@ -277,11 +278,7 @@ func (c *Config) detectFirstCommitYear() int {
 	return year
 }
 
-// FormatCopyrightYears returns a formatted year string for copyright statements.
-// If copyrightYear is 0, attempts to auto-detect from git history.
-// If copyrightYear equals current year, returns current year only.
-// Otherwise returns "copyrightYear, currentYear" format (e.g., "2023, 2025").
-func (c *Config) FormatCopyrightYears() string {
+func (c *Config) formatCopyrightYears() string {
 	currentYear := time.Now().Year()
 	copyrightYear := c.Project.CopyrightYear
 
@@ -302,4 +299,9 @@ func (c *Config) FormatCopyrightYears() string {
 
 	// Return year range: "startYear, currentYear"
 	return fmt.Sprintf("%d, %d", copyrightYear, currentYear)
+}
+
+// FormatCopyrightYearsForNewHeaders returns a formatted year string for adding missing headers.
+func (c *Config) FormatCopyrightYearsForNewHeaders() string {
+	return c.formatCopyrightYears()
 }

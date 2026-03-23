@@ -39,6 +39,7 @@ func Test_LoadConfMap(t *testing.T) {
 	mp := map[string]interface{}{
 		"schema_version":         12,
 		"project.copyright_year": 9001,
+		"project.ignore_year1":   true,
 		"project.license":        "MPL-2.0",
 		"dispatch.ignored_repos": []string{"foo", "bar"},
 	}
@@ -54,6 +55,7 @@ func Test_LoadConfMap(t *testing.T) {
 		Project: Project{
 			CopyrightHolder: "IBM Corp.",
 			CopyrightYear:   9001,
+			IgnoreYear1:     true,
 			License:         "MPL-2.0",
 		},
 		Dispatch: Dispatch{
@@ -374,7 +376,7 @@ func Test_GetConfigPath(t *testing.T) {
 	assert.Equal(t, abs, actualOutput.GetConfigPath(), "Loaded config should return abs file path")
 }
 
-func Test_FormatCopyrightYears(t *testing.T) {
+func Test_FormatCopyrightYearsForNewHeaders(t *testing.T) {
 	currentYear := time.Now().Year()
 
 	tests := []struct {
@@ -404,14 +406,15 @@ func Test_FormatCopyrightYears(t *testing.T) {
 			c := MustNew()
 			c.Project.CopyrightYear = tt.copyrightYear
 
-			actualOutput := c.FormatCopyrightYears()
+			actualOutput := c.FormatCopyrightYearsForNewHeaders()
 
 			assert.Equal(t, tt.expectedOutput, actualOutput, tt.description)
 		})
 	}
+
 }
 
-func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
+func Test_FormatCopyrightYearsForNewHeaders_AutoDetect(t *testing.T) {
 	currentYear := time.Now().Year()
 
 	t.Run("Auto-detect from git when copyright_year not set", func(t *testing.T) {
@@ -421,7 +424,7 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 		// Set config path to this repo's directory for git detection
 		c.absCfgPath = filepath.Join(getCurrentDir(t), ".copywrite.hcl")
 
-		actualOutput := c.FormatCopyrightYears()
+		actualOutput := c.FormatCopyrightYearsForNewHeaders()
 
 		// Should auto-detect and return a year range (this repo was created before 2025)
 		// The format should be "YYYY, currentYear" where YYYY < currentYear
@@ -445,12 +448,28 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 		// Set config path to non-existent directory (git will fail)
 		c.absCfgPath = "/nonexistent/path/.copywrite.hcl"
 
-		actualOutput := c.FormatCopyrightYears()
+		actualOutput := c.FormatCopyrightYearsForNewHeaders()
 
 		// Should fallback to current year only
 		assert.Equal(t, strconv.Itoa(currentYear), actualOutput,
 			"Should fallback to current year when git detection fails")
 	})
+}
+
+// Test_FormatCopyrightYearsForNewHeaders verifies that ignore_year1 does NOT suppress
+// the config year when creating brand-new copyright headers. New files always receive
+// the full "configYear, currentYear" string from the .hcl copyright_year setting.
+func Test_FormatCopyrightYearsForNewHeaders_IgnoreYear1DoesNotAffectNewHeaders(t *testing.T) {
+	currentYear := time.Now().Year()
+
+	c := MustNew()
+	c.Project.CopyrightYear = 2015
+	c.Project.IgnoreYear1 = true
+
+	actualOutput := c.FormatCopyrightYearsForNewHeaders()
+
+	assert.Equal(t, fmt.Sprintf("2015, %d", currentYear), actualOutput,
+		"ignore_year1 must not affect new-header year format; config year should always be used")
 }
 
 // Helper function to get current directory
