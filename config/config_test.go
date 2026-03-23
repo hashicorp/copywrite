@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/knadh/koanf"
+	"github.com/knadh/koanf/v2"
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 )
