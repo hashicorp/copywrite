@@ -301,11 +301,6 @@ func (c *Config) formatCopyrightYears() string {
 	return fmt.Sprintf("%d, %d", copyrightYear, currentYear)
 }
 
-// FormatCopyrightYears returns a formatted year string for copyright statements.
-func (c *Config) FormatCopyrightYears() string {
-	return c.formatCopyrightYears()
-}
-
 // FormatCopyrightYearsForNewHeaders returns a formatted year string for adding missing headers.
 func (c *Config) FormatCopyrightYearsForNewHeaders() string {
 	return c.formatCopyrightYears()

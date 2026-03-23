@@ -376,7 +376,7 @@ func Test_GetConfigPath(t *testing.T) {
 	assert.Equal(t, abs, actualOutput.GetConfigPath(), "Loaded config should return abs file path")
 }
 
-func Test_FormatCopyrightYears(t *testing.T) {
+func Test_FormatCopyrightYearsForNewHeaders(t *testing.T) {
 	currentYear := time.Now().Year()
 
 	tests := []struct {
@@ -406,7 +406,7 @@ func Test_FormatCopyrightYears(t *testing.T) {
 			c := MustNew()
 			c.Project.CopyrightYear = tt.copyrightYear
 
-			actualOutput := c.FormatCopyrightYears()
+			actualOutput := c.FormatCopyrightYearsForNewHeaders()
 
 			assert.Equal(t, tt.expectedOutput, actualOutput, tt.description)
 		})
@@ -414,7 +414,7 @@ func Test_FormatCopyrightYears(t *testing.T) {
 
 }
 
-func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
+func Test_FormatCopyrightYearsForNewHeaders_AutoDetect(t *testing.T) {
 	currentYear := time.Now().Year()
 
 	t.Run("Auto-detect from git when copyright_year not set", func(t *testing.T) {
@@ -424,7 +424,7 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 		// Set config path to this repo's directory for git detection
 		c.absCfgPath = filepath.Join(getCurrentDir(t), ".copywrite.hcl")
 
-		actualOutput := c.FormatCopyrightYears()
+		actualOutput := c.FormatCopyrightYearsForNewHeaders()
 
 		// Should auto-detect and return a year range (this repo was created before 2025)
 		// The format should be "YYYY, currentYear" where YYYY < currentYear
@@ -448,7 +448,7 @@ func Test_FormatCopyrightYears_AutoDetect(t *testing.T) {
 		// Set config path to non-existent directory (git will fail)
 		c.absCfgPath = "/nonexistent/path/.copywrite.hcl"
 
-		actualOutput := c.FormatCopyrightYears()
+		actualOutput := c.FormatCopyrightYearsForNewHeaders()
 
 		// Should fallback to current year only
 		assert.Equal(t, strconv.Itoa(currentYear), actualOutput,
