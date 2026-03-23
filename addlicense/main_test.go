@@ -15,6 +15,7 @@
 package addlicense
 
 import (
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -968,5 +969,45 @@ func TestDirectorySkippingRegressionTest(t *testing.T) {
 	expectedContent := "// Copyright IBM Corp. 2023, 2026\n\npackage main\n\nfunc main() {}"
 	if string(result) != expectedContent {
 		t.Errorf("File content not updated correctly:\ngot:\n%s\n\nwant:\n%s", result, expectedContent)
+	}
+}
+
+// TestBrokenSymlinkSkipped verifies that a broken symlink in the directory tree
+// does not cause Run to return an error and that real files are still processed.
+func TestBrokenSymlinkSkipped(t *testing.T) {
+	tmp := tempDir(t)
+	t.Cleanup(func() { os.RemoveAll(tmp) })
+
+	// Create a real Go file with no copyright header
+	realFile := filepath.Join(tmp, "real.go")
+	if err := os.WriteFile(realFile, []byte("package main\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a broken symlink (target does not exist)
+	brokenLink := filepath.Join(tmp, "broken.go")
+	if err := os.Symlink(filepath.Join(tmp, "nonexistent.go"), brokenLink); err != nil {
+		t.Fatal(err)
+	}
+
+	logger := log.New(os.Stderr, "", 0)
+	licenseData := LicenseData{
+		Holder: "Test Corp.",
+		Year:   "2024",
+		SPDXID: "Apache-2.0",
+	}
+
+	err := Run([]string{}, "off", licenseData, "", false, false, []string{tmp}, logger)
+	if err != nil {
+		t.Fatalf("Run returned error on broken symlink: %v", err)
+	}
+
+	// The real file should have received a copyright header
+	content, err := os.ReadFile(realFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "Test Corp.") {
+		t.Errorf("expected copyright header in real.go, got:\n%s", content)
 	}
 }
