@@ -241,6 +241,7 @@ func processFile(f *file, t *template.Template, license LicenseData, checkonly b
 			return err
 		}
 		if lic == nil { // Unknown fileExtension
+			logger.Printf("[WARN] %s - unknown file extension", f.path)
 			return nil
 		}
 		// Check if file has a license
