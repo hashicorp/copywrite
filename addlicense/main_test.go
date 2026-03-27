@@ -54,8 +54,17 @@ func TestInitial(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		t.Logf("run #%d", i)
 		targs := []string{"-test.run=TestInitial"}
-		cargs := []string{"-l", "apache", "-c", "Google LLC", "-y", "2018", tmp}
+		cargs := []string{"-l", "apache", "-c", "Google LLC", "-y", "2018"}
+
+		// supply default ignore list to make test consistent with reality
+		for _, p := range AutoSkippedPatterns {
+			cargs = append(cargs, "-ignore", p)
+		}
+
+		cargs = append(cargs, tmp)
+
 		c := exec.Command(os.Args[0], append(targs, cargs...)...)
+		t.Logf("args = %v", cargs)
 		c.Env = []string{"RUNME=1"}
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("%v\n%s", err, out)
