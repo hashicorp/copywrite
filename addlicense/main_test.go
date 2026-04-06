@@ -976,7 +976,11 @@ func TestDirectorySkippingRegressionTest(t *testing.T) {
 // does not cause Run to return an error and that real files are still processed.
 func TestBrokenSymlinkSkipped(t *testing.T) {
 	tmp := tempDir(t)
-	t.Cleanup(func() { os.RemoveAll(tmp) })
+		t.Cleanup(func() {
+			if err := os.RemoveAll(tmp); err != nil {
+				t.Logf("Failed to remove temp dir: %v", err)
+			}
+		})
 
 	// Create a real Go file with no copyright header
 	realFile := filepath.Join(tmp, "real.go")
