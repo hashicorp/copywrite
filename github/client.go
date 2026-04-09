@@ -13,11 +13,11 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-hclog"
-	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/dotenv"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/oauth2"
 )
