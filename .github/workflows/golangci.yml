@@ -48,7 +48,7 @@ jobs:
         run: go test -v -coverprofile=coverage.out ./...
 
       - name: upload coverage report
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           path: coverage.out
           name: coverage-report
@@ -90,7 +90,7 @@ jobs:
           args: release --clean --skip=publish --snapshot
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: copywrite
           path: dist/*
