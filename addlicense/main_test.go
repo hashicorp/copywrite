@@ -1001,7 +1001,7 @@ func TestBrokenSymlinkSkipped(t *testing.T) {
 		SPDXID: "Apache-2.0",
 	}
 
-	err := Run([]string{}, "off", licenseData, "", false, false, []string{tmp}, logger)
+	_, err := Run([]string{}, "off", licenseData, "", false, false, []string{tmp}, logger)
 	if err != nil {
 		t.Fatalf("Run returned error on broken symlink: %v", err)
 	}

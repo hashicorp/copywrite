@@ -145,7 +145,7 @@ config, see the "copywrite init" command.`,
 		if plan && updatedCount > 0 {
 			err = fmt.Errorf("[DRY RUN] %d file(s) would be updated with new copyright years", updatedCount)
 		}
-		runErr := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
+		filesAdded, runErr := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
 		if err != nil && runErr != nil {
 			err = fmt.Errorf("%v; %v", err, runErr)
 		} else if err == nil {
@@ -153,10 +153,10 @@ config, see the "copywrite init" command.`,
 		}
 		gha.EndGroup()
 
-		// STEP 4: Update LICENSE file if any files were modified (either updated or added headers)
-		// In plan mode: if addlicense found missing headers (returns error), assume files would be modified
-		// In normal mode: if addlicense succeeded, assume files were modified
-		if runErr != nil || (!plan && runErr == nil) {
+		// STEP 4: Update LICENSE file if any files were actually modified (either updated or added headers)
+		// In plan mode: runErr != nil means headers would be added
+		// In normal mode: filesAdded tracks whether addlicense actually wrote any files
+		if runErr != nil || filesAdded {
 			anyFileUpdated = true
 		}
 

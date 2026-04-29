@@ -28,6 +28,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -138,7 +139,7 @@ func main() {
 	logger := log.Default()
 
 	// real main
-	err := Run(
+	_, err := Run(
 		ignorePatterns,
 		spdx,
 		data,
@@ -187,33 +188,37 @@ func Run(
 	checkonly bool,
 	patterns []string,
 	logger *log.Logger,
-) error {
+) (bool, error) {
 	// verify that all ignorePatterns are valid
 	err := validatePatterns(ignorePatternList)
 	if err != nil {
-		return err
+		return false, err
 	}
 	ignorePatterns = ignorePatternList
 
 	tpl, err := fetchTemplate(license.SPDXID, licenseFileOverride, spdx)
 	if err != nil {
-		return err
+		return false, err
 	}
 	t, err := template.New("").Parse(tpl)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// process at most 1000 files in parallel
 	ch := make(chan *file, 1000)
 	done := make(chan struct{})
 	var out error
+	var anyModified atomic.Bool
 	go func() {
 		var wg errgroup.Group
 		for f := range ch {
 			f := f // https://golang.org/doc/faq#closures_and_goroutines
 			wg.Go(func() error {
-				err := processFile(f, t, license, checkonly, verbose, logger)
+				modified, err := processFile(f, t, license, checkonly, verbose, logger)
+				if modified {
+					anyModified.Store(true)
+				}
 				return err
 			})
 		}
@@ -223,52 +228,52 @@ func Run(
 
 	for _, d := range patterns {
 		if err := walk(ch, d, logger); err != nil {
-			return err
+			return false, err
 		}
 	}
 	close(ch)
 	<-done
 
-	return out
+	return anyModified.Load(), out
 }
 
-func processFile(f *file, t *template.Template, license LicenseData, checkonly bool, verbose bool, logger *log.Logger) error {
+func processFile(f *file, t *template.Template, license LicenseData, checkonly bool, verbose bool, logger *log.Logger) (bool, error) {
 	if checkonly {
 		// Check if file extension is known
 		lic, err := licenseHeader(f.path, t, license)
 		if err != nil {
 			logger.Printf("%s: %v", f.path, err)
-			return err
+			return false, err
 		}
 		if lic == nil { // Unknown fileExtension
-			return nil
+			return false, nil
 		}
 		// Check if file has a license
 		hasLicense, err := fileHasLicense(f.path)
 		if err != nil {
 			logger.Printf("%s: %v", f.path, err)
-			return err
+			return false, err
 		}
 		if !hasLicense {
 			logger.Printf("%s\n", f.path)
-			return errors.New("missing license header")
+			return false, errors.New("missing license header")
 		}
 		// Also check if existing files would need copyright holder updates
 		wouldUpdate, err := wouldUpdateLicenseHolder(f.path, license)
 		if err != nil {
 			logger.Printf("%s: %v", f.path, err)
-			return err
+			return false, err
 		}
 		if wouldUpdate {
 			logger.Printf("%s (would update copyright holder)\n", f.path)
-			return errors.New("copyright holder would be updated")
+			return false, errors.New("copyright holder would be updated")
 		}
 	} else {
 		// First, try to add a license if missing
 		modified, err := addLicense(f.path, f.mode, t, license)
 		if err != nil {
 			logger.Printf("%s: %v", f.path, err)
-			return err
+			return false, err
 		}
 
 		// If file wasn't modified (already had a license), try to update the holder
@@ -276,17 +281,18 @@ func processFile(f *file, t *template.Template, license LicenseData, checkonly b
 			updated, err := updateLicenseHolder(f.path, f.mode, license)
 			if err != nil {
 				logger.Printf("%s: %v", f.path, err)
-				return err
+				return false, err
 			}
 			if updated {
-
 				logger.Printf("%s (copyright holder updated)", f.path)
+				return true, nil
 			}
 		} else {
 			logger.Printf("%s (license header added)", f.path)
+			return true, nil
 		}
 	}
-	return nil
+	return false, nil
 }
 
 type file struct {
