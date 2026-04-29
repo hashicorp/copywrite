@@ -307,6 +307,10 @@ func walk(ch chan<- *file, start string, logger *log.Logger) error {
 			return nil
 		}
 		if fi.IsDir() {
+			if path != start && FileMatches(path, ignorePatterns) {
+				logger.Printf("[DEBUG] skipping directory: %s", path)
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		// Skip symlinks — broken symlinks cause os.ReadFile to fail with
