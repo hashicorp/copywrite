@@ -259,7 +259,13 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 				return nil
 			}
 
-			if err != nil || d.IsDir() {
+			if err != nil {
+				return nil
+			}
+			if d.IsDir() {
+				if path != "." && addlicense.FileMatches(path, ignoredPatterns) {
+					return filepath.SkipDir
+				}
 				return nil
 			}
 
