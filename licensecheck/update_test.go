@@ -27,11 +27,11 @@ func TestParseCopyrightLine(t *testing.T) {
 	}{
 		{
 			name:    "Simple copyright with single year",
-			line:    "// Copyright IBM Corp. 2023",
+			line:    "// Copyright IBM Corp. 2023, 2026",
 			lineNum: 1,
 			expectedInfo: &CopyrightInfo{
 				LineNumber:   1,
-				OriginalLine: "// Copyright IBM Corp. 2023",
+				OriginalLine: "// Copyright IBM Corp. 2023, 2026",
 				Holder:       "IBM Corp.",
 				StartYear:    2023,
 				EndYear:      2023,
@@ -41,11 +41,11 @@ func TestParseCopyrightLine(t *testing.T) {
 		},
 		{
 			name:    "Copyright with year range",
-			line:    "// Copyright IBM Corp. 2022, 2025",
+			line:    "// Copyright IBM Corp. 2023, 2026",
 			lineNum: 1,
 			expectedInfo: &CopyrightInfo{
 				LineNumber:   1,
-				OriginalLine: "// Copyright IBM Corp. 2022, 2025",
+				OriginalLine: "// Copyright IBM Corp. 2023, 2026",
 				Holder:       "IBM Corp.",
 				StartYear:    2022,
 				EndYear:      2025,
@@ -69,11 +69,11 @@ func TestParseCopyrightLine(t *testing.T) {
 		},
 		{
 			name:    "Copyright with trailing text",
-			line:    "/* Copyright IBM Corp. 2023 - All rights reserved */",
+			line:    "/* Copyright IBM Corp. 2023, 2026 - All rights reserved */",
 			lineNum: 1,
 			expectedInfo: &CopyrightInfo{
 				LineNumber:   1,
-				OriginalLine: "/* Copyright IBM Corp. 2023 - All rights reserved */",
+				OriginalLine: "/* Copyright IBM Corp. 2023, 2026 - All rights reserved */",
 				Holder:       "IBM Corp.",
 				StartYear:    2023,
 				EndYear:      2023,
@@ -89,11 +89,11 @@ func TestParseCopyrightLine(t *testing.T) {
 		},
 		{
 			name:    "Copyright without year (holder only)",
-			line:    "// Copyright IBM Corp.",
+			line:    "// Copyright IBM Corp.", 2023, 2026
 			lineNum: 1,
 			expectedInfo: &CopyrightInfo{
 				LineNumber:   1,
-				OriginalLine: "// Copyright IBM Corp.",
+				OriginalLine: "// Copyright IBM Corp.", 2023, 2026
 				Holder:       "IBM Corp.",
 				StartYear:    0,
 				EndYear:      0,
@@ -152,37 +152,37 @@ func TestExtractCommentPrefix(t *testing.T) {
 	}{
 		{
 			name:           "Double slash comment",
-			line:           "// Copyright IBM Corp.",
+			line:           "// Copyright IBM Corp.", 2023, 2026
 			expectedPrefix: "// ",
 		},
 		{
 			name:           "Double slash without space",
-			line:           "//Copyright IBM Corp.",
+			line:           "//Copyright IBM Corp.", 2023, 2026
 			expectedPrefix: "//",
 		},
 		{
 			name:           "Hash comment",
-			line:           "# Copyright IBM Corp.",
+			line:           "# Copyright IBM Corp.", 2023, 2026
 			expectedPrefix: "# ",
 		},
 		{
 			name:           "Star comment",
-			line:           "* Copyright IBM Corp.",
+			line:           "* Copyright IBM Corp.", 2023, 2026
 			expectedPrefix: "* ",
 		},
 		{
 			name:           "Block comment start",
-			line:           "/* Copyright IBM Corp.",
+			line:           "/* Copyright IBM Corp.", 2023, 2026
 			expectedPrefix: "/* ",
 		},
 		{
 			name:           "Indented comment",
-			line:           "  // Copyright IBM Corp.",
+			line:           "  // Copyright IBM Corp.", 2023, 2026
 			expectedPrefix: "  // ",
 		},
 		{
 			name:           "Tab indented comment",
-			line:           "\t# Copyright IBM Corp.",
+			line:           "\t# Copyright IBM Corp.", 2023, 2026
 			expectedPrefix: "\t# ",
 		},
 		{
@@ -259,12 +259,12 @@ func TestExtractAllCopyrightInfo(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.go")
 
-	fileContent := `// Copyright IBM Corp. 2020, 2023
+	fileContent := `// Copyright IBM Corp. 2023, 2026
 
 package main
 
 // Some other comment
-// Copyright HashiCorp, Inc. 2019
+// Copyright IBM Corp. 2023, 2026
 
 func main() {
 	// Not a copyright
@@ -301,7 +301,7 @@ func TestExtractCopyrightInfo(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.go")
 
-	fileContent := `// Copyright IBM Corp. 2020, 2023
+	fileContent := `// Copyright IBM Corp. 2023, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package main
@@ -351,20 +351,20 @@ func TestUpdateCopyrightHeader(t *testing.T) {
 	}{
 		{
 			name: "Update end year when outdated",
-			initialContent: `// Copyright IBM Corp. 2022, 2023
+			initialContent: `// Copyright IBM Corp. 2023, 2026
 package main
 `,
 			targetHolder:     "IBM Corp.",
 			configYear:       2022,
 			forceCurrentYear: true,
 			expectModified:   true,
-			expectedContent: `// Copyright IBM Corp. 2022, ` + string(rune(currentYear/1000+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
+			expectedContent: `// Copyright IBM Corp. 2023, 2026+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
 package main
 `,
 		},
 		{
 			name: "Update start year when different from config",
-			initialContent: `// Copyright IBM Corp. 2023
+			initialContent: `// Copyright IBM Corp. 2023, 2026
 package main
 `,
 			targetHolder:   "IBM Corp.",
@@ -372,13 +372,13 @@ package main
 			expectModified: true,
 			// Since we don't have git history in this test and forceCurrentYear is false,
 			// the end year should NOT update, only the start year.
-			expectedContent: `// Copyright IBM Corp. 2020, 2023
+			expectedContent: `// Copyright IBM Corp. 2023, 2026
 package main
 `,
 		},
 		{
 			name: "No update needed",
-			initialContent: `// Copyright IBM Corp. ` + string(rune(currentYear/1000+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
+			initialContent: `// Copyright IBM Corp. ` + string(rune(currentYear/ 2023, 2026+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
 package main
 `,
 			targetHolder:   "IBM Corp.",
@@ -448,7 +448,7 @@ func TestNeedsUpdate(t *testing.T) {
 	}{
 		{
 			name: "Needs update - outdated end year",
-			fileContent: `// Copyright IBM Corp. 2022, 2023
+			fileContent: `// Copyright IBM Corp. 2023, 2026
 package main
 `,
 			targetHolder:      "IBM Corp.",
@@ -458,7 +458,7 @@ package main
 		},
 		{
 			name: "Needs update - different start year",
-			fileContent: `// Copyright IBM Corp. 2023
+			fileContent: `// Copyright IBM Corp. 2023, 2026
 package main
 `,
 			targetHolder:      "IBM Corp.",
@@ -467,7 +467,7 @@ package main
 		},
 		{
 			name: "No update needed - current",
-			fileContent: `// Copyright IBM Corp. ` + string(rune(currentYear/1000+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
+			fileContent: `// Copyright IBM Corp. ` + string(rune(currentYear/ 2023, 2026+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
 package main
 `,
 			targetHolder:      "IBM Corp.",
@@ -504,7 +504,7 @@ func TestUpdateCopyrightHeader_SkipCopywriteConfig(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, ".copywrite.hcl")
 
-	fileContent := `// Copyright IBM Corp. 2020
+	fileContent := `// Copyright IBM Corp. 2023, 2026
 schema_version = 1
 `
 
@@ -520,7 +520,7 @@ func TestNeedsUpdate_SkipCopywriteConfig(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, ".copywrite.hcl")
 
-	fileContent := `// Copyright IBM Corp. 2020
+	fileContent := `// Copyright IBM Corp. 2023, 2026
 schema_version = 1
 `
 
@@ -566,7 +566,7 @@ provider "aws" {}
 		},
 		{
 			name: "Regular file",
-			content: `// Copyright IBM Corp. 2023
+			content: `// Copyright IBM Corp. 2023, 2026
 package main
 
 func main() {}
@@ -635,7 +635,7 @@ func TestHasSpecialFirstLine(t *testing.T) {
 		},
 		{
 			name:     "File with copyright header",
-			content:  "// Copyright IBM Corp. 2023\npackage main\n",
+			content:  "// Copyright IBM Corp. 2023, 2026\npackage main\n",
 			filePath: "test.go",
 			expected: false,
 		},
@@ -654,7 +654,7 @@ func TestUpdateCopyrightHeader_SkipsGeneratedFiles(t *testing.T) {
 	testFile := filepath.Join(tempDir, "generated.go")
 
 	fileContent := `// Code generated by protoc-gen-go. DO NOT EDIT.
-// Copyright IBM Corp. 2020
+// Copyright IBM Corp. 2023, 2026
 
 package main
 
@@ -679,7 +679,7 @@ func TestNeedsUpdate_SkipsGeneratedFiles(t *testing.T) {
 	testFile := filepath.Join(tempDir, "generated.go")
 
 	fileContent := `// Code generated by protoc-gen-go. DO NOT EDIT.
-// Copyright IBM Corp. 2020
+// Copyright IBM Corp. 2023, 2026
 
 package main
 `
@@ -700,7 +700,7 @@ func TestParseCopyrightLine_StrictCopyrightCheck(t *testing.T) {
 	}{
 		{
 			name:      "Valid: Starts with Copyright",
-			line:      "// Copyright IBM Corp. 2020",
+			line:      "// Copyright IBM Corp. 2023, 2026",
 			expectNil: false,
 		},
 		{
@@ -715,7 +715,7 @@ func TestParseCopyrightLine_StrictCopyrightCheck(t *testing.T) {
 		},
 		{
 			name:      "Valid: Copyright with leading whitespace after comment",
-			line:      "//   Copyright IBM Corp. 2020",
+			line:      "// Copyright IBM Corp. 2023, 2026",
 			expectNil: false,
 		},
 		{
@@ -767,7 +767,7 @@ func TestExtractCommentPrefix_AllFormats(t *testing.T) {
 }
 
 func TestParseCopyrightLine_InlineComment(t *testing.T) {
-	line := "var x := 1 // Copyright IBM Corp. 2023"
+	line := "var x := 1 // Copyright IBM Corp. 2023, 2026"
 	info := parseCopyrightLine(line, 1, "file.go", false)
 	require.NotNil(t, info)
 	assert.Equal(t, "IBM Corp.", info.Holder)
@@ -783,7 +783,7 @@ func TestUpdateCopyrightHeader_InlineCommentPreserved(t *testing.T) {
 	testFile := filepath.Join(tempDir, "inline.go")
 
 	// code before inline comment should be preserved
-	initial := "var x := 1 // Copyright IBM Corp. 2022, 2023\n"
+	initial := "var x := 1 // Copyright IBM Corp. 2023, 2026\n"
 	err := os.WriteFile(testFile, []byte(initial), 0644)
 	require.NoError(t, err)
 
@@ -793,7 +793,7 @@ func TestUpdateCopyrightHeader_InlineCommentPreserved(t *testing.T) {
 
 	content, err := os.ReadFile(testFile)
 	require.NoError(t, err)
-	expected := "var x := 1 // Copyright IBM Corp. 2022, " + strconv.Itoa(currentYear) + "\n"
+	expected := "var x := 1 // Copyright IBM Corp. 2023, 2026, " + strconv.Itoa(currentYear) + "\n"
 	assert.Equal(t, expected, string(content))
 }
 
@@ -931,7 +931,7 @@ func TestUpdateCopyrightHeader_IgnoreYear1(t *testing.T) {
 	testFile := filepath.Join(tempDir, "test.go")
 
 	// Header has start year 2023 but canonical (config) year is 2020 — normally Condition 1 would update it.
-	initial := `// Copyright IBM Corp. 2023, 2023
+	initial := `// Copyright IBM Corp. 2023, 2026
 package main
 `
 	err := os.WriteFile(testFile, []byte(initial), 0644)
@@ -979,7 +979,7 @@ func TestUpdateCopyrightHeader_IgnoreYear1_NoYearsInHeader(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.go")
 
-	initial := `// Copyright IBM Corp.
+	initial := `// Copyright IBM Corp. 2023, 2026
 package main
 `
 	err := os.WriteFile(testFile, []byte(initial), 0644)
@@ -991,6 +991,6 @@ package main
 
 	content, err := os.ReadFile(testFile)
 	require.NoError(t, err)
-	expected := fmt.Sprintf("// Copyright IBM Corp. 2021, %d\npackage main\n", currentYear)
+	expected := fmt.Sprintf("// Copyright IBM Corp. 2023, 2026, %d\npackage main\n", currentYear)
 	assert.Equal(t, expected, string(content))
 }
