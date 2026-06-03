@@ -1008,15 +1008,15 @@ func TestGitOperations(t *testing.T) {
 	cmd.Dir = tempDir
 	require.NoError(t, cmd.Run())
 
-	exec.Command("git", "-C", tempDir, "config", "user.email", "test@example.com").Run()
-	exec.Command("git", "-C", tempDir, "config", "user.name", "Test User").Run()
+	require.NoError(t, exec.Command("git", "-C", tempDir, "config", "user.email", "test@example.com").Run())
+	require.NoError(t, exec.Command("git", "-C", tempDir, "config", "user.name", "Test User").Run())
 
 	// Create and commit a file with a specific date
 	testFile := filepath.Join(tempDir, "test.txt")
 	err := os.WriteFile(testFile, []byte("test content"), 0644)
 	require.NoError(t, err)
 
-	exec.Command("git", "-C", tempDir, "add", "test.txt").Run()
+	require.NoError(t, exec.Command("git", "-C", tempDir, "add", "test.txt").Run())
 
 	commitCmd := exec.Command("git", "-C", tempDir, "commit", "-m", "first commit")
 	commitCmd.Env = append(os.Environ(), "GIT_AUTHOR_DATE=2020-01-01T12:00:00Z", "GIT_COMMITTER_DATE=2020-01-01T12:00:00Z")
@@ -1026,7 +1026,7 @@ func TestGitOperations(t *testing.T) {
 	testFile2 := filepath.Join(tempDir, "test2.txt")
 	err = os.WriteFile(testFile2, []byte("test content 2"), 0644)
 	require.NoError(t, err)
-	exec.Command("git", "-C", tempDir, "add", "test2.txt").Run()
+	require.NoError(t, exec.Command("git", "-C", tempDir, "add", "test2.txt").Run())
 	commitCmd2 := exec.Command("git", "-C", tempDir, "commit", "-m", "second commit")
 	commitCmd2.Env = append(os.Environ(), "GIT_AUTHOR_DATE=2023-01-01T12:00:00Z", "GIT_COMMITTER_DATE=2023-01-01T12:00:00Z")
 	require.NoError(t, commitCmd2.Run())
