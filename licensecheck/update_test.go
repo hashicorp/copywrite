@@ -1018,7 +1018,7 @@ func TestGitOperations(t *testing.T) {
 
 	require.NoError(t, exec.Command("git", "-C", tempDir, "add", "test.txt").Run())
 
-	commitCmd := exec.Command("git", "-C", tempDir, "commit", "-m", "first commit")
+	commitCmd := exec.Command("git", "-C", tempDir, "-c", "commit.gpgsign=false", "commit", "-m", "first commit")
 	commitCmd.Env = append(os.Environ(), "GIT_AUTHOR_DATE=2020-01-01T12:00:00Z", "GIT_COMMITTER_DATE=2020-01-01T12:00:00Z")
 	require.NoError(t, commitCmd.Run())
 
@@ -1027,7 +1027,7 @@ func TestGitOperations(t *testing.T) {
 	err = os.WriteFile(testFile2, []byte("test content 2"), 0644)
 	require.NoError(t, err)
 	require.NoError(t, exec.Command("git", "-C", tempDir, "add", "test2.txt").Run())
-	commitCmd2 := exec.Command("git", "-C", tempDir, "commit", "-m", "second commit")
+	commitCmd2 := exec.Command("git", "-C", tempDir, "-c", "commit.gpgsign=false", "commit", "-m", "second commit")
 	commitCmd2.Env = append(os.Environ(), "GIT_AUTHOR_DATE=2023-01-01T12:00:00Z", "GIT_COMMITTER_DATE=2023-01-01T12:00:00Z")
 	require.NoError(t, commitCmd2.Run())
 
@@ -1036,12 +1036,14 @@ func TestGitOperations(t *testing.T) {
 		require.NoError(t, err)
 
 		// Resolve symlinks since macOS TempDir paths are symlinks (/var -> /private/var)
-		evalRoot, _ := filepath.EvalSymlinks(tempDir)
+		evalRoot, err := filepath.EvalSymlinks(tempDir)
+		require.NoError(t, err)
 		assert.Equal(t, evalRoot, root)
 	})
 
 	t.Run("buildRepositoryCache", func(t *testing.T) {
-		evalRoot, _ := filepath.EvalSymlinks(tempDir)
+		evalRoot, err := filepath.EvalSymlinks(tempDir)
+		require.NoError(t, err)
 		cache, firstYear, err := buildRepositoryCache(evalRoot)
 		require.NoError(t, err)
 		assert.Equal(t, 2020, firstYear)
@@ -1076,9 +1078,11 @@ func TestGitOperations(t *testing.T) {
 	})
 
 	t.Run("getCachedFileLastCommitYear", func(t *testing.T) {
-		evalRoot, _ := filepath.EvalSymlinks(tempDir)
+		evalRoot, err := filepath.EvalSymlinks(tempDir)
+		require.NoError(t, err)
 		once = sync.Once{}
-		_ = InitializeGitCache(evalRoot)
+		err = InitializeGitCache(evalRoot)
+		require.NoError(t, err)
 
 		year, err := getCachedFileLastCommitYear("test2.txt", evalRoot)
 		require.NoError(t, err)
@@ -1092,7 +1096,8 @@ func TestGitOperations(t *testing.T) {
 	t.Run("getFileLastCommitYear", func(t *testing.T) {
 		evalRoot, _ := filepath.EvalSymlinks(tempDir)
 		once = sync.Once{}
-		_ = InitializeGitCache(evalRoot)
+		err = InitializeGitCache(evalRoot)
+		require.NoError(t, err)
 
 		year, err := getFileLastCommitYear(filepath.Join(evalRoot, "test.txt"), evalRoot)
 		require.NoError(t, err)

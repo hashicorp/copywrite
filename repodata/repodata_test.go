@@ -114,7 +114,7 @@ func TestTransform(t *testing.T) {
 	t.Run("empty array returns empty result", func(t *testing.T) {
 		result, err := Transform([]*github.Repository{})
 		require.NoError(t, err)
-		assert.Equal(t, []map[string]interface{}(nil), result)
+		assert.Empty(t, result)
 	})
 
 	t.Run("transform repo with string fields", func(t *testing.T) {

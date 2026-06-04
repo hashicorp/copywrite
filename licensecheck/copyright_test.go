@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHasMatchingCopyright(t *testing.T) {
@@ -294,8 +295,10 @@ func TestHasMatchingCopyright_EdgeCases(t *testing.T) {
 		}
 		content := string(padding) + "Copyright!"
 
-		f, _ := afero.TempFile(AppFs, tempDir, "")
-		_ = afero.WriteFile(AppFs, f.Name(), []byte(content), 0644)
+		f, err := afero.TempFile(AppFs, tempDir, "")
+		require.NoError(t, err)
+		err = afero.WriteFile(AppFs, f.Name(), []byte(content), 0644)
+		require.NoError(t, err)
 
 		hasCopyright, err := HasMatchingCopyright(f.Name(), "Copyright", false)
 		assert.Nil(t, err)
@@ -305,8 +308,10 @@ func TestHasMatchingCopyright_EdgeCases(t *testing.T) {
 	t.Run("file less than 300 bytes", func(t *testing.T) {
 		content := "Short file with Copyright notice"
 
-		f, _ := afero.TempFile(AppFs, tempDir, "")
-		_ = afero.WriteFile(AppFs, f.Name(), []byte(content), 0644)
+		f, err := afero.TempFile(AppFs, tempDir, "")
+		require.NoError(t, err)
+		err = afero.WriteFile(AppFs, f.Name(), []byte(content), 0644)
+		require.NoError(t, err)
 
 		hasCopyright, err := HasMatchingCopyright(f.Name(), "Copyright", false)
 		assert.Nil(t, err)

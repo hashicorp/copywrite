@@ -6,11 +6,13 @@ package licensecheck
 import (
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func createTempFiles(t *testing.T, fileNames []string) (dirPath string, filePaths []string) {
@@ -115,10 +117,11 @@ func TestAddHeader(t *testing.T) {
 		tempDir := t.TempDir()
 		filePath := filepath.Join(tempDir, "test.txt")
 		originalContent := "This is the original file content"
-		_ = afero.WriteFile(AppFs, filePath, []byte(originalContent), 0644)
+		err := afero.WriteFile(AppFs, filePath, []byte(originalContent), 0644)
+		require.NoError(t, err)
 
 		header := "Copyright (c) 2023 Test Corp"
-		err := AddHeader(filePath, header)
+		err = AddHeader(filePath, header)
 		assert.Nil(t, err)
 
 		// Read file and verify header was prepended
@@ -126,8 +129,8 @@ func TestAddHeader(t *testing.T) {
 		assert.Contains(t, string(content), header)
 		assert.Contains(t, string(content), originalContent)
 		// Header should come before original content
-		headerIdx := lo.IndexOf([]byte(string(content)), []byte(header)[0])
-		contentIdx := lo.IndexOf([]byte(string(content)), []byte(originalContent)[0])
+		headerIdx := strings.Index(string(content), header)
+		contentIdx := strings.Index(string(content), originalContent)
 		assert.Less(t, headerIdx, contentIdx)
 	})
 
