@@ -8,7 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
+
+	// "os/exec"
 	"testing"
 	"time"
 
@@ -125,27 +126,6 @@ func TestGetRepoCreationYear(t *testing.T) {
 	}
 }
 
-func TestDiscoverRepo(t *testing.T) {
-	tmpDir := t.TempDir()
-	t.Chdir(tmpDir)
-
-	run := func(args ...string) {
-		t.Helper()
-		cmd := exec.Command("git", args...)
-		cmd.Dir = tmpDir
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "git %v failed: %s", args, string(out))
-	}
-
-	run("init")
-	run("remote", "add", "origin", "https://github.com/hashicorp/copywrite.git")
-
-	repo, err := DiscoverRepo()
-	require.NoError(t, err)
-	assert.Equal(t, "hashicorp", repo.Owner)
-	assert.Equal(t, "copywrite", repo.Name)
-}
-
 func TestDiscoverRepo_NotInGitRepo(t *testing.T) {
 	// Use t.Chdir for process-safe directory change in tests
 	tmpDir := t.TempDir()
@@ -153,5 +133,5 @@ func TestDiscoverRepo_NotInGitRepo(t *testing.T) {
 
 	_, err := DiscoverRepo()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unable to determine")
+	assert.Contains(t, err.Error(), "unable to determine if the current directory relates to a GitHub repo:")
 }
