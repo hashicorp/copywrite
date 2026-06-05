@@ -248,13 +248,23 @@ func TestNewGHClient_WithGitHubToken(t *testing.T) {
 }
 
 func TestNewGHClient_UnauthenticatedFallback(t *testing.T) {
+	homedir.DisableCache = true
+	t.Cleanup(func() { homedir.DisableCache = false })
 	// Ensure no App config
 	t.Setenv("APP_ID", "")
 	t.Setenv("INSTALLATION_ID", "")
 	t.Setenv("APP_PEM", "")
 
-	// Ensure no GITHUB_TOKEN
-	t.Setenv("GITHUB_TOKEN", "")
+	// Ensure no GITHUB_TOKEN — must unset, not empty, because NewGHClient uses os.LookupEnv
+	prev, had := os.LookupEnv("GITHUB_TOKEN")
+	require.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
+	t.Cleanup(func() {
+		if had {
+			_ = os.Setenv("GITHUB_TOKEN", prev)
+		} else {
+			_ = os.Unsetenv("GITHUB_TOKEN")
+		}
+	})
 
 	// Set HOME to a temp dir with no gh config
 	tmpHome := t.TempDir()
@@ -274,8 +284,16 @@ func TestNewGHClient_WithGHCLIConfig(t *testing.T) {
 	t.Setenv("INSTALLATION_ID", "")
 	t.Setenv("APP_PEM", "")
 
-	// Ensure no GITHUB_TOKEN
-	t.Setenv("GITHUB_TOKEN", "")
+	// Ensure no GITHUB_TOKEN — must unset, not empty, because NewGHClient uses os.LookupEnv
+	prev, had := os.LookupEnv("GITHUB_TOKEN")
+	require.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
+	t.Cleanup(func() {
+		if had {
+			_ = os.Setenv("GITHUB_TOKEN", prev)
+		} else {
+			_ = os.Unsetenv("GITHUB_TOKEN")
+		}
+	})
 
 	// Set up gh CLI config
 	tmpHome := t.TempDir()

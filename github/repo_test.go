@@ -142,12 +142,9 @@ func TestDiscoverRepo(t *testing.T) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), "unable to determine")
 			} else {
-				// We're running from within the copywrite repo
-				if err == nil {
-					assert.NotEmpty(t, repo.Owner)
-					assert.NotEmpty(t, repo.Name)
-				}
-				// If err != nil, it's okay - depends on CI environment
+				require.NoError(t, err)
+				assert.NotEmpty(t, repo.Owner)
+				assert.NotEmpty(t, repo.Name)
 			}
 		})
 	}
