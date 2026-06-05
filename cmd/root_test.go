@@ -99,19 +99,16 @@ project {
 }
 
 func Test_initLogger_DefaultLevel(t *testing.T) {
-	os.Unsetenv("RUNNER_DEBUG")
-	os.Unsetenv("COPYWRITE_LOG_LEVEL")
+	t.Setenv("RUNNER_DEBUG", "")
+	t.Setenv("COPYWRITE_LOG_LEVEL", "")
 
 	initLogger()
 	require.NotNil(t, cliLogger)
 }
 
 func Test_initLogger_RunnerDebug(t *testing.T) {
-	oldVal := os.Getenv("RUNNER_DEBUG")
-	defer os.Setenv("RUNNER_DEBUG", oldVal)
-
-	os.Setenv("RUNNER_DEBUG", "1")
-	os.Unsetenv("COPYWRITE_LOG_LEVEL")
+	t.Setenv("RUNNER_DEBUG", "1")
+	t.Setenv("COPYWRITE_LOG_LEVEL", "")
 
 	initLogger()
 	require.NotNil(t, cliLogger)
@@ -131,17 +128,8 @@ func Test_initLogger_CopywriteLogLevel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			oldVal, exists := os.LookupEnv("COPYWRITE_LOG_LEVEL")
-			defer func() {
-				if exists {
-					os.Setenv("COPYWRITE_LOG_LEVEL", oldVal)
-				} else {
-					os.Unsetenv("COPYWRITE_LOG_LEVEL")
-				}
-			}()
-
-			os.Setenv("COPYWRITE_LOG_LEVEL", tt.level)
-			os.Unsetenv("RUNNER_DEBUG")
+			t.Setenv("COPYWRITE_LOG_LEVEL", tt.level)
+			t.Setenv("RUNNER_DEBUG", "")
 
 			initLogger()
 			require.NotNil(t, cliLogger)
@@ -150,19 +138,8 @@ func Test_initLogger_CopywriteLogLevel(t *testing.T) {
 }
 
 func Test_initLogger_CopywriteLogLevelOverridesRunnerDebug(t *testing.T) {
-	oldRunner := os.Getenv("RUNNER_DEBUG")
-	oldLevel, levelExists := os.LookupEnv("COPYWRITE_LOG_LEVEL")
-	defer func() {
-		os.Setenv("RUNNER_DEBUG", oldRunner)
-		if levelExists {
-			os.Setenv("COPYWRITE_LOG_LEVEL", oldLevel)
-		} else {
-			os.Unsetenv("COPYWRITE_LOG_LEVEL")
-		}
-	}()
-
-	os.Setenv("RUNNER_DEBUG", "1")
-	os.Setenv("COPYWRITE_LOG_LEVEL", "ERROR")
+	t.Setenv("RUNNER_DEBUG", "1")
+	t.Setenv("COPYWRITE_LOG_LEVEL", "ERROR")
 
 	initLogger()
 	require.NotNil(t, cliLogger)

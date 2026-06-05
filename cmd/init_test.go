@@ -224,22 +224,15 @@ func TestInitCmd_Run_NoTTY(t *testing.T) {
 	cmd.Dir = tmpDir
 	require.NoError(t, cmd.Run())
 
-	origDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(origDir)
-	require.NoError(t, os.Chdir(tmpDir))
-
-	// Ensure no existing .copywrite.hcl
-	os.Remove(filepath.Join(tmpDir, ".copywrite.hcl"))
+	t.Chdir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"init", "--spdx", "MPL-2.0", "--year", "2023"})
 
-	err = rootCmd.Execute()
+	err := rootCmd.Execute()
 	if err == nil {
-		// Verify the config file was created
 		_, statErr := os.Stat(filepath.Join(tmpDir, ".copywrite.hcl"))
 		assert.NoError(t, statErr)
 
@@ -256,10 +249,10 @@ func TestInitCmd_PreRun_InvalidSPDX(t *testing.T) {
 	// cobra.CheckErr in PreRun calls os.Exit, so we test this in a subprocess
 	if os.Getenv("TEST_INIT_INVALID_SPDX") == "1" {
 		tmpDir := t.TempDir()
-		os.Chdir(tmpDir)
+		t.Chdir(tmpDir)
 
 		rootCmd.SetArgs([]string{"init", "--spdx", "INVALID-LICENSE-XYZ", "--force"})
-		rootCmd.Execute()
+		_ = rootCmd.Execute()
 		return
 	}
 
@@ -281,11 +274,11 @@ project {
   copyright_year = 2020
 }
 `
-		os.WriteFile(filepath.Join(tmpDir, ".copywrite.hcl"), []byte(validHCL), 0644)
-		os.Chdir(tmpDir)
+		_ = os.WriteFile(filepath.Join(tmpDir, ".copywrite.hcl"), []byte(validHCL), 0644)
+		t.Chdir(tmpDir)
 
 		rootCmd.SetArgs([]string{"init", "--spdx", "MPL-2.0"})
-		rootCmd.Execute()
+		_ = rootCmd.Execute()
 		return
 	}
 
@@ -327,17 +320,14 @@ project {
 `
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".copywrite.hcl"), []byte(validHCL), 0644))
 
-	origDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(origDir)
-	require.NoError(t, os.Chdir(tmpDir))
+	t.Chdir(tmpDir)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"init", "--force", "--spdx", "MIT", "--year", "2022"})
 
-	err = rootCmd.Execute()
+	err := rootCmd.Execute()
 	if err == nil {
 		content, readErr := os.ReadFile(filepath.Join(tmpDir, ".copywrite.hcl"))
 		require.NoError(t, readErr)
