@@ -267,14 +267,14 @@ func TestInitCmd_PreRun_InvalidSPDX(t *testing.T) {
 func TestInitCmd_PreRun_ExistingConfig(t *testing.T) {
 	// cobra.CheckErr in PreRun calls os.Exit, so we test this in a subprocess
 	if os.Getenv("TEST_INIT_EXISTING_CONFIG") == "1" {
-		tmpDir, _ := os.MkdirTemp("", "copywrite-test-*")
+		tmpDir := t.TempDir()
 		validHCL := `schema_version = 1
 project {
   license = "MIT"
   copyright_year = 2020
 }
 `
-		_ = os.WriteFile(filepath.Join(tmpDir, ".copywrite.hcl"), []byte(validHCL), 0644)
+		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".copywrite.hcl"), []byte(validHCL), 0644))
 		t.Chdir(tmpDir)
 
 		rootCmd.SetArgs([]string{"init", "--spdx", "MPL-2.0"})
