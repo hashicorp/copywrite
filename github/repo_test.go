@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -125,29 +126,24 @@ func TestGetRepoCreationYear(t *testing.T) {
 }
 
 func TestDiscoverRepo(t *testing.T) {
-	tests := []struct {
-		name    string
-		wantErr bool
-	}{
-		{
-			name:    "discovers repo from current directory (inside git repo)",
-			wantErr: false,
-		},
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = tmpDir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v failed: %s", args, string(out))
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			repo, err := DiscoverRepo()
-			if tc.wantErr {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), "unable to determine")
-			} else {
-				require.NoError(t, err)
-				assert.NotEmpty(t, repo.Owner)
-				assert.NotEmpty(t, repo.Name)
-			}
-		})
-	}
+	run("init")
+	run("remote", "add", "origin", "https://github.com/hashicorp/copywrite.git")
+
+	repo, err := DiscoverRepo()
+	require.NoError(t, err)
+	assert.Equal(t, "hashicorp", repo.Owner)
+	assert.Equal(t, "copywrite", repo.Name)
 }
 
 func TestDiscoverRepo_NotInGitRepo(t *testing.T) {
