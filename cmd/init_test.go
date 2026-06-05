@@ -230,19 +230,20 @@ func TestInitCmd_Run_NoTTY(t *testing.T) {
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"init", "--spdx", "MPL-2.0", "--year", "2023"})
+	t.Cleanup(func() {
+		rootCmd.SetOut(nil)
+		rootCmd.SetErr(nil)
+		rootCmd.SetArgs(nil)
+	})
 
 	err := rootCmd.Execute()
-	if err == nil {
-		_, statErr := os.Stat(filepath.Join(tmpDir, ".copywrite.hcl"))
-		assert.NoError(t, statErr)
+	require.NoError(t, err)
 
-		// Verify content
-		content, readErr := os.ReadFile(filepath.Join(tmpDir, ".copywrite.hcl"))
-		if readErr == nil {
-			assert.Contains(t, string(content), "MPL-2.0")
-			assert.Contains(t, string(content), "2023")
-		}
-	}
+	require.FileExists(t, filepath.Join(tmpDir, ".copywrite.hcl"))
+	content, readErr := os.ReadFile(filepath.Join(tmpDir, ".copywrite.hcl"))
+	require.NoError(t, readErr)
+	assert.Contains(t, string(content), "MPL-2.0")
+	assert.Contains(t, string(content), "2023")
 }
 
 func TestInitCmd_PreRun_InvalidSPDX(t *testing.T) {
@@ -326,12 +327,16 @@ project {
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"init", "--force", "--spdx", "MIT", "--year", "2022"})
+	t.Cleanup(func() {
+		rootCmd.SetOut(nil)
+		rootCmd.SetErr(nil)
+		rootCmd.SetArgs(nil)
+	})
 
 	err := rootCmd.Execute()
-	if err == nil {
-		content, readErr := os.ReadFile(filepath.Join(tmpDir, ".copywrite.hcl"))
-		require.NoError(t, readErr)
-		assert.Contains(t, string(content), "MIT")
-		assert.Contains(t, string(content), "2022")
-	}
+	require.NoError(t, err)
+	content, readErr := os.ReadFile(filepath.Join(tmpDir, ".copywrite.hcl"))
+	require.NoError(t, readErr)
+	assert.Contains(t, string(content), "MIT")
+	assert.Contains(t, string(content), "2022")
 }

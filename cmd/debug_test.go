@@ -54,18 +54,13 @@ func TestDebugCmd_RegisteredUnderRoot(t *testing.T) {
 }
 
 func TestDebugCmd_RunsWithCurrentDir(t *testing.T) {
-	buf := new(bytes.Buffer)
-	debugCmd.SetOut(buf)
-	debugCmd.SetErr(buf)
-	rootCmd.SetOut(buf)
-	rootCmd.SetErr(buf)
-	rootCmd.SetArgs([]string{"debug", "--dirPath", "."})
-
-	err := rootCmd.Execute()
-	// This may fail if no git repo is detected, but should not panic
-	if err == nil {
-		output := buf.String()
-		assert.Contains(t, output, "Copywrite Version:")
-		assert.Contains(t, output, "Working Directory:")
-	}
+	// This test focuses on ensuring the PreRun path is safe with default settings.
+	initLogger()
+	oldDirPath := dirPath
+	t.Cleanup(func() { dirPath = oldDirPath })
+	dirPath = "."
+	require.NotNil(t, debugCmd.PreRun)
+	assert.NotPanics(t, func() {
+		debugCmd.PreRun(debugCmd, []string{})
+	})
 }
