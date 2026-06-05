@@ -287,10 +287,19 @@ project {
 
 	t.Chdir(tmpDir)
 
-	// Reset dirPath to avoid stale state from other tests
-	oldDirPath := dirPath
-	defer func() { dirPath = oldDirPath }()
+	// Reset dirPath/plan to avoid stale state from other tests
+	oldDirPath, oldPlan := dirPath, plan
+	t.Cleanup(func() { dirPath = oldDirPath; plan = oldPlan })
 	dirPath = "."
+
+	origRootOut, origRootErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
+	origHdrOut, origHdrErr := headersCmd.OutOrStdout(), headersCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		rootCmd.SetOut(origRootOut)
+		rootCmd.SetErr(origRootErr)
+		headersCmd.SetOut(origHdrOut)
+		headersCmd.SetErr(origHdrErr)
+	})
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -299,7 +308,8 @@ project {
 	headersCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"headers", "--plan", "--spdx", "MPL-2.0", "--copyright-holder", "Test Corp."})
 
-	_ = rootCmd.Execute()
+	err := rootCmd.Execute()
+	require.NoError(t, err)
 	output := buf.String()
 	assert.Contains(t, output, "dry-run mode")
 }
@@ -326,9 +336,9 @@ func TestHeadersCmd_Run_WithEmptyLicense(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=TestHeadersCmd_Run_WithEmptyLicense", "-test.count=1")
 	cmd.Env = append(os.Environ(), "TEST_HEADERS_EMPTY_LICENSE=1")
 	output, err := cmd.CombinedOutput()
+	assert.Error(t, err)
 	outputStr := string(output)
 	assert.Contains(t, outputStr, "--spdx flag was not specified")
-	_ = err
 }
 
 func TestHeadersCmd_Run_WithHeaderIgnore(t *testing.T) {
@@ -368,6 +378,15 @@ project {
 
 	t.Chdir(tmpDir)
 
+	origRootOut, origRootErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
+	origHdrOut, origHdrErr := headersCmd.OutOrStdout(), headersCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		rootCmd.SetOut(origRootOut)
+		rootCmd.SetErr(origRootErr)
+		headersCmd.SetOut(origHdrOut)
+		headersCmd.SetErr(origHdrErr)
+	})
+
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
@@ -375,7 +394,8 @@ project {
 	headersCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"headers", "--spdx", "MPL-2.0", "--copyright-holder", "Test Corp."})
 
-	_ = rootCmd.Execute()
+	err := rootCmd.Execute()
+	require.NoError(t, err)
 
 	output := buf.String()
 

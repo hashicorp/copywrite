@@ -206,7 +206,7 @@ func Test_determineLicenseCopyrightYears_WithMultipleCommits(t *testing.T) {
 	conf.Project.CopyrightYear = 2019
 	result := determineLicenseCopyrightYears(tmpDir)
 	// Should be a range from 2019 to current year
-	currentYear := time.Now().Year()
+	currentYear := now.Year()
 	expected := fmt.Sprintf("2019, %d", currentYear)
 	assert.Equal(t, expected, result)
 }
@@ -242,18 +242,28 @@ func TestLicenseCmd_Run_WithExistingLicense(t *testing.T) {
 	t.Chdir(tmpDir)
 
 	oldConf := *conf
-	defer func() { *conf = oldConf }()
+	t.Cleanup(func() { *conf = oldConf })
+
+	oldPlan := plan
+	t.Cleanup(func() { plan = oldPlan })
+	plan = false
 
 	origOut, origErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
-	defer func() { rootCmd.SetOut(origOut); rootCmd.SetErr(origErr) }()
+	t.Cleanup(func() { rootCmd.SetOut(origOut); rootCmd.SetErr(origErr) })
+	origLicOut, origLicErr := licenseCmd.OutOrStdout(), licenseCmd.ErrOrStderr()
+	t.Cleanup(func() { licenseCmd.SetOut(origLicOut); licenseCmd.SetErr(origLicErr) })
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
+	licenseCmd.SetOut(buf)
+	licenseCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"license", fmt.Sprintf("--year=%d", currentYear), "--spdx", "MPL-2.0", "--copyright-holder", "Test Corp.", "--dirPath", "."})
 
 	// Exercises the Run path - may succeed or fail depending on copyright format matching
-	_ = rootCmd.Execute()
+	err := rootCmd.Execute()
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "Copyright statement is valid!")
 }
 
 func TestLicenseCmd_Run_Plan_MissingLicense(t *testing.T) {
@@ -378,7 +388,7 @@ func TestLicenseCmd_Run_CreatesLicenseFile(t *testing.T) {
 	rootCmd.SetErr(buf)
 	licenseCmd.SetOut(buf)
 	licenseCmd.SetErr(buf)
-	rootCmd.SetArgs([]string{"license", "--year", "2023", "--spdx", "MPL-2.0", "--copyright-holder", "Test Corp."})
+	rootCmd.SetArgs([]string{"license", "--dirPath", ".", "--year", "2023", "--spdx", "MPL-2.0", "--copyright-holder", "Test Corp."})
 
 	err := rootCmd.Execute()
 	require.NoError(t, err)
