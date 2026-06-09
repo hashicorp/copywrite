@@ -2,8 +2,8 @@ name: golangci
 
 on:
   push:
-    branches:
-      - main
+    # branches:
+    #   - main
   pull_request:
 
 permissions:
@@ -47,11 +47,14 @@ jobs:
       - name: run go test
         run: go test -v -coverprofile=coverage.out ./...
 
-      - name: upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - name: Push coverage to central hub
+        if: vars.COVERAGE_HUB_REPO != ''
+        continue-on-error: true
+        uses: hashicorp/oss-core-library-dashboard-metrics/.github/actions/push-coverage@test-coverage
         with:
-          path: coverage.out
-          name: coverage-report
+          app-id:          "${{ secrets.APP_ID }}"
+          private-key:     "${{ secrets.PRIVATE_KEY }}"
+          go-coverprofile: coverage.out
 
       - name: display coverage report
         run: go tool cover -func=coverage.out
