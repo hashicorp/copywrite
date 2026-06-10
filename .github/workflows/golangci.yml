@@ -146,19 +146,25 @@ jobs:
             echo "Hub: nothing changed — skipping commit."
             exit 0
           fi
-          git commit -m "coverage: update ${REPO_NAME}"
 
-          for attempt in 1 2 3; do
-            git pull --rebase origin main
-            if git push origin main; then
-              echo "Hub push succeeded (attempt ${attempt})."
-              exit 0
-            fi
-            echo "Hub push failed (attempt ${attempt}), retrying in $((attempt * 3))s..."
-            sleep $((attempt * 3))
-          done
-          echo "Hub push failed after 3 attempts — the next run will catch up."
-          exit 1
+          BRANCH="coverage/${REPO_NAME}-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
+          git commit -m "coverage: update ${REPO_NAME}"
+          git push origin "$BRANCH"
+
+          # Create PR using GitHub API
+          PR_TITLE="coverage: update ${REPO_NAME}"
+          PR_BODY="Automated coverage data update for \`${REPO_NAME}\`."
+          curl -sf -X POST \
+            -H "Authorization: token ${HUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${HUB_REPO}/pulls" \
+            -d "$(jq -n \
+              --arg title "$PR_TITLE" \
+              --arg body "$PR_BODY" \
+              --arg head "$BRANCH" \
+              '{title: $title, body: $body, head: $head, base: "main"}')" \
+            | jq -r '"PR created: \(.html_url)"'
 
       - name: display coverage report
         run: go tool cover -func=coverage.out
