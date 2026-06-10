@@ -146,6 +146,7 @@ jobs:
             echo "Hub: nothing changed — skipping commit."
             exit 0
           fi
+          git commit -m "coverage: update ${REPO_NAME}"
 
           for attempt in 1 2 3; do
             git pull --rebase origin main
