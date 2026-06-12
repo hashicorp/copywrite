@@ -22,7 +22,7 @@ func Test_determineLicenseCopyrightYears(t *testing.T) {
 
 	// Save and restore conf
 	oldYear := conf.Project.CopyrightYear
-	defer func() { conf.Project.CopyrightYear = oldYear }()
+	t.Cleanup(func() { conf.Project.CopyrightYear = oldYear })
 
 	tests := []struct {
 		name          string
@@ -34,7 +34,7 @@ func Test_determineLicenseCopyrightYears(t *testing.T) {
 			name:          "with configured year matching current year returns single year",
 			copyrightYear: currentYear,
 			setupDir: func(t *testing.T) string {
-				return setupGitRepo(t, time.Now())
+				return newGitRepo(t, time.Now())
 			},
 			validate: func(t *testing.T, result string) {
 				assert.Equal(t, strconv.Itoa(currentYear), result)
@@ -44,7 +44,7 @@ func Test_determineLicenseCopyrightYears(t *testing.T) {
 			name:          "with configured year earlier than last commit returns range",
 			copyrightYear: 2019,
 			setupDir: func(t *testing.T) string {
-				return setupGitRepo(t, time.Now())
+				return newGitRepo(t, time.Now())
 			},
 			validate: func(t *testing.T, result string) {
 				assert.Contains(t, result, "2019")
@@ -65,7 +65,7 @@ func Test_determineLicenseCopyrightYears(t *testing.T) {
 			name:          "without configured year in git repo detects from git",
 			copyrightYear: 0,
 			setupDir: func(t *testing.T) string {
-				return setupGitRepo(t, time.Now())
+				return newGitRepo(t, time.Now())
 			},
 			validate: func(t *testing.T, result string) {
 				assert.NotEmpty(t, result)
@@ -83,39 +83,6 @@ func Test_determineLicenseCopyrightYears(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
-}
-
-func setupGitRepo(t *testing.T, commitDate time.Time) string {
-	t.Helper()
-	tmpDir := t.TempDir()
-
-	cmds := [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@test.com"},
-		{"git", "config", "user.name", "Test"},
-	}
-	for _, args := range cmds {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = tmpDir
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "cmd %v failed: %s", args, out)
-	}
-
-	testFile := filepath.Join(tmpDir, "test.go")
-	err := os.WriteFile(testFile, []byte("package main"), 0644)
-	require.NoError(t, err)
-
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-
-	dateStr := commitDate.Format("2006-01-02T15:04:05-07:00")
-	cmd = exec.Command("git", "commit", "-m", "initial commit", "--date", dateStr)
-	cmd.Dir = tmpDir
-	cmd.Env = append(os.Environ(), "GIT_COMMITTER_DATE="+dateStr)
-	require.NoError(t, cmd.Run())
-
-	return tmpDir
 }
 
 func TestLicenseCmd_Flags(t *testing.T) {
@@ -201,7 +168,7 @@ func Test_determineLicenseCopyrightYears_WithMultipleCommits(t *testing.T) {
 	require.NoError(t, cmd.Run())
 
 	oldYear := conf.Project.CopyrightYear
-	defer func() { conf.Project.CopyrightYear = oldYear }()
+	t.Cleanup(func() { conf.Project.CopyrightYear = oldYear })
 
 	conf.Project.CopyrightYear = 2019
 	result := determineLicenseCopyrightYears(tmpDir)
@@ -300,7 +267,9 @@ func TestLicenseCmd_Run_Plan_MissingLicense(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=TestLicenseCmd_Run_Plan_MissingLicense", "-test.count=1")
 	cmd.Env = append(os.Environ(), "TEST_LICENSE_PLAN_MISSING=1")
 	output, err := cmd.CombinedOutput()
-	assert.Error(t, err)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr, "expected subprocess to exit with a non-zero exit code")
+	assert.Equal(t, 1, exitErr.ExitCode(), "expected exit code 1 for missing license")
 	assert.Contains(t, string(output), "missing license file")
 }
 
@@ -339,7 +308,9 @@ func TestLicenseCmd_Run_MultipleLicenseFiles(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=TestLicenseCmd_Run_MultipleLicenseFiles", "-test.count=1")
 	cmd.Env = append(os.Environ(), "TEST_LICENSE_MULTIPLE=1")
 	output, err := cmd.CombinedOutput()
-	assert.Error(t, err)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr, "expected subprocess to exit with a non-zero exit code")
+	assert.Equal(t, 1, exitErr.ExitCode(), "expected exit code 1 for multiple license files")
 	assert.Contains(t, string(output), "more than one license file")
 }
 
@@ -368,20 +339,20 @@ func TestLicenseCmd_Run_CreatesLicenseFile(t *testing.T) {
 	t.Chdir(tmpDir)
 
 	oldConf := *conf
-	defer func() { *conf = oldConf }()
+	t.Cleanup(func() { *conf = oldConf })
 	conf.Project.License = "MPL-2.0"
 	conf.Project.CopyrightYear = 2023
 	conf.Project.CopyrightHolder = "Test Corp."
 
 	// Reset the global plan variable to avoid pollution from prior tests
 	oldPlan := plan
-	defer func() { plan = oldPlan }()
+	t.Cleanup(func() { plan = oldPlan })
 	plan = false
 
 	origOut, origErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
-	defer func() { rootCmd.SetOut(origOut); rootCmd.SetErr(origErr) }()
+	t.Cleanup(func() { rootCmd.SetOut(origOut); rootCmd.SetErr(origErr) })
 	origLicOut, origLicErr := licenseCmd.OutOrStdout(), licenseCmd.ErrOrStderr()
-	defer func() { licenseCmd.SetOut(origLicOut); licenseCmd.SetErr(origLicErr) }()
+	t.Cleanup(func() { licenseCmd.SetOut(origLicOut); licenseCmd.SetErr(origLicErr) })
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)

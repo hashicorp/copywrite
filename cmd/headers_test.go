@@ -17,20 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// initGitRepo initializes a git repository in dir with a dummy commit.
-func initGitRepo(t *testing.T, dir string) {
-	t.Helper()
-	for _, args := range [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@test.com"},
-		{"git", "config", "user.name", "Test"},
-	} {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = dir
-		require.NoError(t, cmd.Run())
-	}
-}
-
 // gitAddCommit stages all files and creates a commit in dir.
 func gitAddCommit(t *testing.T, dir, message string) {
 	t.Helper()
@@ -87,12 +73,7 @@ func TestHeadersCmd_Help(t *testing.T) {
 }
 
 func Test_updateExistingHeaders_EmptyDirectory(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
-
-	// Create a dummy commit so git log works
-	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "dummy.txt"), []byte("dummy"), 0644))
-	gitAddCommit(t, tmpDir, "init")
+	tmpDir := newGitRepo(t, time.Now())
 
 	t.Chdir(tmpDir)
 
@@ -112,8 +93,7 @@ func Test_updateExistingHeaders_EmptyDirectory(t *testing.T) {
 }
 
 func Test_updateExistingHeaders_WithLicenseFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
+	tmpDir := newGitRepo(t, time.Now())
 
 	// Create LICENSE file
 	licenseContent := "Copyright Test Corp. 2023\nMIT License\n"
@@ -135,8 +115,7 @@ func Test_updateExistingHeaders_WithLicenseFile(t *testing.T) {
 }
 
 func Test_updateExistingHeaders_SkipsIgnoredPatterns(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
+	tmpDir := newGitRepo(t, time.Now())
 
 	// Create files in vendor directory
 	vendorDir := filepath.Join(tmpDir, "vendor")
@@ -175,8 +154,7 @@ func Test_updateLicenseFile_EmptyPath(t *testing.T) {
 }
 
 func Test_updateLicenseFile_DryRun(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
+	tmpDir := newGitRepo(t, time.Now())
 
 	// Create a LICENSE file with copyright
 	licenseContent := "Copyright Test Corp. 2020\n\nMIT License text here\n"
@@ -236,8 +214,7 @@ func Test_updateLicenseFile_UpdatesYear(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tmpDir := t.TempDir()
-			initGitRepo(t, tmpDir)
+			tmpDir := newGitRepo(t, time.Now())
 
 			licensePath := filepath.Join(tmpDir, "LICENSE")
 			require.NoError(t, os.WriteFile(licensePath, []byte(tt.initialContent), 0644))
@@ -263,9 +240,8 @@ func Test_updateLicenseFile_UpdatesYear(t *testing.T) {
 	}
 }
 
-func TestHeadersCmd_PlanMode_NoFiles(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
+func TestHeadersCmd_PlanMode_NoFilesUpdated(t *testing.T) {
+	tmpDir := newGitRepo(t, time.Now())
 
 	// Create a .copywrite.hcl so the command doesn't fail on config load
 	configContent := `schema_version = 1
@@ -318,10 +294,9 @@ func TestHeadersCmd_Run_WithEmptyLicense(t *testing.T) {
 	// When no --spdx is specified, addlicense.Run in plan mode may still find a missing
 	// header and cobra.CheckErr will call os.Exit. Use subprocess testing pattern.
 	if os.Getenv("TEST_HEADERS_EMPTY_LICENSE") == "1" {
-		tmpDir := t.TempDir()
-		initGitRepo(t, tmpDir)
+		tmpDir := newGitRepo(t, time.Now())
 
-		goContent := fmt.Sprintf("// Copyright (c) Test Corp. 2023, %d\n\npackage main\n\nfunc main() {}\n", time.Now().Year())
+		goContent := fmt.Sprintf("// Copyright Test Corp. 2023, %d\n\npackage main\n\nfunc main() {}\n", time.Now().Year())
 		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte(goContent), 0644))
 		gitAddCommit(t, tmpDir, "init")
 
@@ -336,14 +311,15 @@ func TestHeadersCmd_Run_WithEmptyLicense(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=TestHeadersCmd_Run_WithEmptyLicense", "-test.count=1")
 	cmd.Env = append(os.Environ(), "TEST_HEADERS_EMPTY_LICENSE=1")
 	output, err := cmd.CombinedOutput()
-	assert.Error(t, err)
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr, "expected subprocess to exit with a non-zero exit code")
+	assert.Equal(t, 1, exitErr.ExitCode(), "expected exit code 1 for missing --spdx flag")
 	outputStr := string(output)
 	assert.Contains(t, outputStr, "--spdx flag was not specified")
 }
 
 func TestHeadersCmd_Run_WithHeaderIgnore(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
+	tmpDir := newGitRepo(t, time.Now())
 
 	// Create a .copywrite.hcl with header_ignore
 	configContent := `schema_version = 1
@@ -360,9 +336,9 @@ project {
 `
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".copywrite.hcl"), []byte(configContent), 0644))
 
-	goFile := filepath.Join(tmpDir, "main.go")
-	goContent := fmt.Sprintf("// Copyright (c) Test Corp. 2023, %d\n// SPDX-License-Identifier: MPL-2.0\n\npackage main\n\nfunc main() {}\n", time.Now().Year())
-	require.NoError(t, os.WriteFile(goFile, []byte(goContent), 0644))
+	mainFile := filepath.Join(tmpDir, "main.go")
+	mainFileContent := fmt.Sprintf("// Copyright Test Corp. 2023, %d\n// SPDX-License-Identifier: MPL-2.0\n\npackage main\n\nfunc main() {}\n", time.Now().Year())
+	require.NoError(t, os.WriteFile(mainFile, []byte(mainFileContent), 0644))
 
 	// Create files that match header_ignore patterns (should not get headers)
 	vendorDir := filepath.Join(tmpDir, "vendor")
@@ -374,6 +350,11 @@ project {
 	autogenFile := filepath.Join(tmpDir, "foo_autogen_bar.go")
 	autogenContent := "package main\n\nfunc Generated() {}\n"
 	require.NoError(t, os.WriteFile(autogenFile, []byte(autogenContent), 0644))
+
+	// A regular file with no header — should be modified by the command
+	regularFile := filepath.Join(tmpDir, "util.go")
+	regularContent := "package main\n\nfunc Util() {}\n"
+	require.NoError(t, os.WriteFile(regularFile, []byte(regularContent), 0644))
 	gitAddCommit(t, tmpDir, "init")
 
 	t.Chdir(tmpDir)
@@ -413,11 +394,21 @@ project {
 	autogenActual, err := os.ReadFile(autogenFile)
 	require.NoError(t, err)
 	assert.Equal(t, autogenContent, string(autogenActual), "autogen file should not have been modified")
+
+	// Verify the non-ignored file was modified (copyright header added)
+	regularActual, err := os.ReadFile(regularFile)
+	require.NoError(t, err)
+	expectedRegular := fmt.Sprintf("// Copyright Test Corp. 2023, %d\n// SPDX-License-Identifier: MPL-2.0\n\npackage main\n\nfunc Util() {}\n", time.Now().Year())
+	assert.Equal(t, expectedRegular, string(regularActual), "regular file should have the copyright header prepended")
+
+	// Verify main.go with a correct existing header was NOT modified
+	mainActual, err := os.ReadFile(mainFile)
+	require.NoError(t, err)
+	assert.Equal(t, mainFileContent, string(mainActual), "main.go with correct header should not have been modified")
 }
 
 func Test_updateLicenseFile_ReadOnlyFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
+	tmpDir := newGitRepo(t, time.Now())
 
 	// Create a LICENSE file with an outdated year
 	licenseContent := "Copyright Test Corp. 2020\n\nLicense text\n"
@@ -452,12 +443,7 @@ func Test_updateLicenseFile_ReadOnlyFile(t *testing.T) {
 }
 
 func Test_updateLicenseFile_NonExistentPath(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
-
-	// Create a dummy file and commit so git operations work
-	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "dummy.txt"), []byte("x"), 0644))
-	gitAddCommit(t, tmpDir, "init")
+	tmpDir := newGitRepo(t, time.Now())
 
 	t.Chdir(tmpDir)
 
@@ -475,8 +461,7 @@ func Test_updateLicenseFile_NonExistentPath(t *testing.T) {
 }
 
 func Test_updateLicenseFile_NoUpdateWhenNotDirty(t *testing.T) {
-	tmpDir := t.TempDir()
-	initGitRepo(t, tmpDir)
+	tmpDir := newGitRepo(t, time.Now())
 
 	currentYear := time.Now().Year()
 	// LICENSE already has the current year — no update needed
