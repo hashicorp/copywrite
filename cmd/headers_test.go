@@ -420,7 +420,8 @@ func Test_updateLicenseFile_ReadOnlyFile(t *testing.T) {
 	require.NoError(t, os.Chmod(licensePath, 0444))
 	t.Cleanup(func() {
 		// Restore permissions so TempDir cleanup succeeds
-		_ = os.Chmod(licensePath, 0644)
+		err := os.Chmod(licensePath, 0644)
+		require.NoError(t, err)
 	})
 
 	t.Chdir(tmpDir)
