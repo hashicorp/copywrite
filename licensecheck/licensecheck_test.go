@@ -114,8 +114,8 @@ func TestAddHeader(t *testing.T) {
 		content, err := afero.ReadFile(AppFs, filePath)
 		require.NoError(t, err)
 		assert.Contains(t, string(content), header)
-		// Should have double newline after header
-		assert.Contains(t, string(content), header+"\n\n")
+		// Should have double newline after header, with nothing following it
+		assert.Equal(t, header+"\n\n", string(content), "file should contain only the header followed by a blank line with nothing after")
 	})
 
 	t.Run("add header to file with existing content", func(t *testing.T) {
@@ -132,18 +132,18 @@ func TestAddHeader(t *testing.T) {
 		// Read file and verify header was prepended
 		content, err := afero.ReadFile(AppFs, filePath)
 		require.NoError(t, err)
-		assert.Contains(t, string(content), header)
-		assert.Contains(t, string(content), originalContent)
-		// Header should come before original content
-		headerIdx := strings.Index(string(content), header)
-		contentIdx := strings.Index(string(content), originalContent)
-		assert.Less(t, headerIdx, contentIdx)
+		// File must start with the exact header followed by a blank line
+		assert.True(t, strings.HasPrefix(string(content), header+"\n\n"),
+			"file should start with the exact header followed by a blank line")
+		assert.True(t, strings.HasSuffix(string(content), originalContent),
+			"original content should follow the header unchanged")
 	})
 
 	t.Run("add multi-line header", func(t *testing.T) {
 		tempDir := t.TempDir()
 		filePath := filepath.Join(tempDir, "test.txt")
-		err := afero.WriteFile(AppFs, filePath, []byte("Original content"), 0644)
+		originalContent := "This is the original file content"
+		err := afero.WriteFile(AppFs, filePath, []byte(originalContent), 0644)
 		require.NoError(t, err)
 
 		header := "Copyright (c) 2023 Test Corp\nSPDX-License-Identifier: MPL-2.0"
@@ -152,9 +152,13 @@ func TestAddHeader(t *testing.T) {
 
 		content, err := afero.ReadFile(AppFs, filePath)
 		require.NoError(t, err)
-		assert.Contains(t, string(content), "Copyright (c) 2023 Test Corp")
-		assert.Contains(t, string(content), "SPDX-License-Identifier: MPL-2.0")
-		assert.Contains(t, string(content), "Original content")
+		expectedPrefix := header + "\n\n"
+		assert.True(t, strings.HasPrefix(string(content), expectedPrefix),
+			"file should start with the multi-line header followed by a blank line")
+		assert.True(t, strings.HasSuffix(string(content), originalContent),
+			"original content should follow the header unchanged")
+		assert.Equal(t, expectedPrefix+originalContent, string(content),
+			"file should contain only the header and original content with nothing in between")
 	})
 
 	t.Run("error on non-existent file", func(t *testing.T) {
