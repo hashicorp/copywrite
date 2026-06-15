@@ -43,3 +43,14 @@ func newGitRepo(t *testing.T, commitDate time.Time) string {
 
 	return tmpDir
 }
+
+// gitAddCommit stages all files and creates a commit in dir.
+func gitAddCommit(t *testing.T, dir, message string) {
+	t.Helper()
+	cmd := exec.Command("git", "add", ".")
+	cmd.Dir = dir
+	require.NoError(t, cmd.Run())
+	cmd = exec.Command("git", "commit", "-m", message)
+	cmd.Dir = dir
+	require.NoError(t, cmd.Run())
+}

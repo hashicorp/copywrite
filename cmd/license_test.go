@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -121,51 +122,12 @@ func TestLicenseCmd_Help(t *testing.T) {
 }
 
 func Test_determineLicenseCopyrightYears_WithMultipleCommits(t *testing.T) {
-	tmpDir := t.TempDir()
+	// First commit dated 2019
+	tmpDir := newGitRepo(t, time.Date(2019, 6, 15, 0, 0, 0, 0, time.UTC))
 
-	// Initialize git repo
-	cmds := [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@test.com"},
-		{"git", "config", "user.name", "Test"},
-	}
-	for _, args := range cmds {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = tmpDir
-		out, err := cmd.CombinedOutput()
-		require.NoError(t, err, "cmd %v failed: %s", args, out)
-	}
-
-	// First commit (old)
-	testFile := filepath.Join(tmpDir, "old.go")
-	err := os.WriteFile(testFile, []byte("package old"), 0644)
-	require.NoError(t, err)
-
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-
-	cmd = exec.Command("git", "commit", "-m", "first commit", "--date", "2019-06-15T00:00:00+00:00")
-	cmd.Dir = tmpDir
-	cmd.Env = append(os.Environ(), "GIT_COMMITTER_DATE=2019-06-15T00:00:00+00:00")
-	require.NoError(t, cmd.Run())
-
-	// Second commit (recent but still in the past)
-	testFile2 := filepath.Join(tmpDir, "new.go")
-	err = os.WriteFile(testFile2, []byte("package new"), 0644)
-	require.NoError(t, err)
-
-	cmd = exec.Command("git", "add", ".")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-
-	// Use current year for the second commit so the test is stable
-	now := time.Now()
-	dateStr := now.Format("2006-01-02T15:04:05-07:00")
-	cmd = exec.Command("git", "commit", "-m", "second commit", "--date", dateStr)
-	cmd.Dir = tmpDir
-	cmd.Env = append(os.Environ(), "GIT_COMMITTER_DATE="+dateStr)
-	require.NoError(t, cmd.Run())
+	// Second commit (current year)
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "new.go"), []byte("package new"), 0644))
+	gitAddCommit(t, tmpDir, "second commit")
 
 	oldYear := conf.Project.CopyrightYear
 	t.Cleanup(func() { conf.Project.CopyrightYear = oldYear })
@@ -173,38 +135,20 @@ func Test_determineLicenseCopyrightYears_WithMultipleCommits(t *testing.T) {
 	conf.Project.CopyrightYear = 2019
 	result := determineLicenseCopyrightYears(tmpDir)
 	// Should be a range from 2019 to current year
-	currentYear := now.Year()
+	currentYear := time.Now().Year()
 	expected := fmt.Sprintf("2019, %d", currentYear)
 	assert.Equal(t, expected, result)
 }
 
 func TestLicenseCmd_Run_WithExistingLicense(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	cmds := [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@test.com"},
-		{"git", "config", "user.name", "Test"},
-	}
-	for _, args := range cmds {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = tmpDir
-		require.NoError(t, cmd.Run())
-	}
+	tmpDir := newGitRepo(t, time.Now())
 
 	// Create a LICENSE file with a copyright format that matches what the command will expect
 	currentYear := time.Now().Year()
 	licenseContent := fmt.Sprintf("Copyright Test Corp. %d\n\nMPL-2.0 License\n", currentYear)
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "LICENSE"), []byte(licenseContent), 0644))
-
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main\n"), 0644))
-
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-	cmd = exec.Command("git", "commit", "-m", "init")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
+	gitAddCommit(t, tmpDir, "init")
 
 	t.Chdir(tmpDir)
 
@@ -227,34 +171,24 @@ func TestLicenseCmd_Run_WithExistingLicense(t *testing.T) {
 	licenseCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"license", fmt.Sprintf("--year=%d", currentYear), "--spdx", "MPL-2.0", "--copyright-holder", "Test Corp.", "--dirPath", "."})
 
-	// Exercises the Run path - may succeed or fail depending on copyright format matching
+	// LICENSE file content matches the expected copyright string exactly, so this should always succeed.
 	err := rootCmd.Execute()
 	require.NoError(t, err)
 	assert.Contains(t, buf.String(), "Copyright statement is valid!")
+
+	// Assert the LICENSE file starts with the copyright prefix
+	fileBytes, readErr := os.ReadFile(filepath.Join(tmpDir, "LICENSE"))
+	require.NoError(t, readErr)
+	assert.True(t, strings.HasPrefix(string(fileBytes), licenseContent), "LICENSE file should start with the copyright statement")
 }
 
 func TestLicenseCmd_Run_Plan_MissingLicense(t *testing.T) {
 	// cobra.CheckErr inside Run calls os.Exit, so test in subprocess
 	if os.Getenv("TEST_LICENSE_PLAN_MISSING") == "1" {
-		tmpDir := t.TempDir()
-
-		for _, args := range [][]string{
-			{"git", "init"},
-			{"git", "config", "user.email", "test@test.com"},
-			{"git", "config", "user.name", "Test"},
-		} {
-			c := exec.Command(args[0], args[1:]...)
-			c.Dir = tmpDir
-			require.NoError(t, c.Run())
-		}
+		tmpDir := newGitRepo(t, time.Now())
 
 		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main\n"), 0644))
-		c := exec.Command("git", "add", ".")
-		c.Dir = tmpDir
-		require.NoError(t, c.Run())
-		c = exec.Command("git", "commit", "-m", "init")
-		c.Dir = tmpDir
-		require.NoError(t, c.Run())
+		gitAddCommit(t, tmpDir, "init")
 
 		t.Chdir(tmpDir)
 		rootCmd.SetArgs([]string{"license", "--plan", "--year", "2023", "--spdx", "MPL-2.0"})
@@ -276,26 +210,11 @@ func TestLicenseCmd_Run_Plan_MissingLicense(t *testing.T) {
 func TestLicenseCmd_Run_MultipleLicenseFiles(t *testing.T) {
 	// cobra.CheckErr inside Run calls os.Exit, so test in subprocess
 	if os.Getenv("TEST_LICENSE_MULTIPLE") == "1" {
-		tmpDir := t.TempDir()
-
-		for _, args := range [][]string{
-			{"git", "init"},
-			{"git", "config", "user.email", "test@test.com"},
-			{"git", "config", "user.name", "Test"},
-		} {
-			c := exec.Command(args[0], args[1:]...)
-			c.Dir = tmpDir
-			require.NoError(t, c.Run())
-		}
+		tmpDir := newGitRepo(t, time.Now())
 
 		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "LICENSE"), []byte("license1\n"), 0644))
 		require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "LICENSE.txt"), []byte("license2\n"), 0644))
-		c := exec.Command("git", "add", ".")
-		c.Dir = tmpDir
-		require.NoError(t, c.Run())
-		c = exec.Command("git", "commit", "-m", "init")
-		c.Dir = tmpDir
-		require.NoError(t, c.Run())
+		gitAddCommit(t, tmpDir, "init")
 
 		t.Chdir(tmpDir)
 		rootCmd.SetArgs([]string{"license", "--year", "2023", "--spdx", "MPL-2.0"})
@@ -315,26 +234,10 @@ func TestLicenseCmd_Run_MultipleLicenseFiles(t *testing.T) {
 }
 
 func TestLicenseCmd_Run_CreatesLicenseFile(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	cmds := [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@test.com"},
-		{"git", "config", "user.name", "Test"},
-	}
-	for _, args := range cmds {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = tmpDir
-		require.NoError(t, cmd.Run())
-	}
+	tmpDir := newGitRepo(t, time.Now())
 
 	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.go"), []byte("package main\n"), 0644))
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-	cmd = exec.Command("git", "commit", "-m", "init")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
+	gitAddCommit(t, tmpDir, "init")
 
 	t.Chdir(tmpDir)
 

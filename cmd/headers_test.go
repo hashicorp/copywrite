@@ -17,17 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// gitAddCommit stages all files and creates a commit in dir.
-func gitAddCommit(t *testing.T, dir, message string) {
-	t.Helper()
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = dir
-	require.NoError(t, cmd.Run())
-	cmd = exec.Command("git", "commit", "-m", message)
-	cmd.Dir = dir
-	require.NoError(t, cmd.Run())
-}
-
 // withTestConfig saves the current global conf, applies modifications via fn,
 // and restores the original config when the test completes.
 func withTestConfig(t *testing.T, fn func(c *config.Config)) {
@@ -35,6 +24,29 @@ func withTestConfig(t *testing.T, fn func(c *config.Config)) {
 	oldConf := *conf
 	t.Cleanup(func() { *conf = oldConf })
 	fn(conf)
+}
+
+// restoreHeadersCmd saves headersCmd's current output/error writers and
+// schedules their restoration via t.Cleanup, preventing tests from leaking
+// writer state into each other.
+func restoreHeadersCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := headersCmd.OutOrStdout(), headersCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		headersCmd.SetOut(origOut)
+		headersCmd.SetErr(origErr)
+	})
+}
+
+// restoreRootCmd saves rootCmd's current output/error writers and schedules
+// their restoration via t.Cleanup.
+func restoreRootCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		rootCmd.SetOut(origOut)
+		rootCmd.SetErr(origErr)
+	})
 }
 
 func TestHeadersCmd_Flags(t *testing.T) {
@@ -58,6 +70,7 @@ func TestHeadersCmd_Flags(t *testing.T) {
 }
 
 func TestHeadersCmd_Help(t *testing.T) {
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 	headersCmd.SetErr(buf)
@@ -83,6 +96,7 @@ func Test_updateExistingHeaders_EmptyDirectory(t *testing.T) {
 		c.Project.IgnoreYear1 = false
 	})
 
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
@@ -107,6 +121,7 @@ func Test_updateExistingHeaders_WithLicenseFile(t *testing.T) {
 		c.Project.CopyrightYear = 2023
 	})
 
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
@@ -135,6 +150,7 @@ func Test_updateExistingHeaders_SkipsIgnoredPatterns(t *testing.T) {
 		c.Project.IgnoreYear1 = false
 	})
 
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
@@ -145,6 +161,7 @@ func Test_updateExistingHeaders_SkipsIgnoredPatterns(t *testing.T) {
 }
 
 func Test_updateLicenseFile_EmptyPath(t *testing.T) {
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
@@ -169,6 +186,7 @@ func Test_updateLicenseFile_DryRun(t *testing.T) {
 		c.Project.CopyrightYear = 2020
 	})
 
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
@@ -227,6 +245,7 @@ func Test_updateLicenseFile_UpdatesYear(t *testing.T) {
 				c.Project.CopyrightYear = tt.configYear
 			})
 
+			restoreHeadersCmd(t)
 			buf := new(bytes.Buffer)
 			headersCmd.SetOut(buf)
 
@@ -268,14 +287,8 @@ project {
 	t.Cleanup(func() { dirPath = oldDirPath; plan = oldPlan })
 	dirPath = "."
 
-	origRootOut, origRootErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
-	origHdrOut, origHdrErr := headersCmd.OutOrStdout(), headersCmd.ErrOrStderr()
-	t.Cleanup(func() {
-		rootCmd.SetOut(origRootOut)
-		rootCmd.SetErr(origRootErr)
-		headersCmd.SetOut(origHdrOut)
-		headersCmd.SetErr(origHdrErr)
-	})
+	restoreRootCmd(t)
+	restoreHeadersCmd(t)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -359,14 +372,8 @@ project {
 
 	t.Chdir(tmpDir)
 
-	origRootOut, origRootErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
-	origHdrOut, origHdrErr := headersCmd.OutOrStdout(), headersCmd.ErrOrStderr()
-	t.Cleanup(func() {
-		rootCmd.SetOut(origRootOut)
-		rootCmd.SetErr(origRootErr)
-		headersCmd.SetOut(origHdrOut)
-		headersCmd.SetErr(origHdrErr)
-	})
+	restoreRootCmd(t)
+	restoreHeadersCmd(t)
 
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
@@ -431,6 +438,7 @@ func Test_updateLicenseFile_ReadOnlyFile(t *testing.T) {
 		c.Project.CopyrightYear = 2020
 	})
 
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
@@ -453,6 +461,7 @@ func Test_updateLicenseFile_NonExistentPath(t *testing.T) {
 		c.Project.CopyrightYear = 2020
 	})
 
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
@@ -478,6 +487,7 @@ func Test_updateLicenseFile_NoUpdateWhenNotDirty(t *testing.T) {
 		c.Project.CopyrightYear = 2020
 	})
 
+	restoreHeadersCmd(t)
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
