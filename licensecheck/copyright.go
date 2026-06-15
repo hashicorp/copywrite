@@ -18,6 +18,10 @@ func HasCopyright(filePath string) (bool, error) {
 	return HasMatchingCopyright(filePath, "copyright", false)
 }
 
+// copyrightHeaderBytes is the number of bytes from the start of a file
+// that are searched for a copyright statement.
+const copyrightHeaderBytes = 300
+
 // HasMatchingCopyright takes an explicit copyright statement and validates that
 // a given file contains that string in the header (first 1k chars)
 func HasMatchingCopyright(filePath string, copyrightStatement string, caseSensitive bool) (bool, error) {
@@ -26,8 +30,8 @@ func HasMatchingCopyright(filePath string, copyrightStatement string, caseSensit
 		return false, err
 	}
 
-	// Check the first 300 characters
-	n := 300
+	// Check the first copyrightHeaderBytes characters
+	n := copyrightHeaderBytes
 	if len(b) < n {
 		n = len(b)
 	}

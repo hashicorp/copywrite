@@ -360,9 +360,7 @@ package main
 			configYear:       2022,
 			forceCurrentYear: true,
 			expectModified:   true,
-			expectedContent: `// Copyright IBM Corp. 2022, ` + string(rune(currentYear/1000+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
-package main
-`,
+			expectedContent:  fmt.Sprintf("// Copyright IBM Corp. 2022, %d\npackage main\n", currentYear),
 		},
 		{
 			name: "Update start year when different from config",
@@ -379,10 +377,8 @@ package main
 `,
 		},
 		{
-			name: "No update needed",
-			initialContent: `// Copyright IBM Corp. ` + string(rune(currentYear/1000+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
-package main
-`,
+			name:           "No update needed",
+			initialContent: fmt.Sprintf("// Copyright IBM Corp. %d\npackage main\n", currentYear),
 			targetHolder:   "IBM Corp.",
 			configYear:     currentYear,
 			expectModified: false,
@@ -468,10 +464,8 @@ package main
 			expectNeedsUpdate: true,
 		},
 		{
-			name: "No update needed - current",
-			fileContent: `// Copyright IBM Corp. ` + string(rune(currentYear/1000+48)) + string(rune((currentYear/100)%10+48)) + string(rune((currentYear/10)%10+48)) + string(rune(currentYear%10+48)) + `
-package main
-`,
+			name:              "No update needed - current",
+			fileContent:       fmt.Sprintf("// Copyright IBM Corp. %d\npackage main\n", currentYear),
 			targetHolder:      "IBM Corp.",
 			configYear:        currentYear,
 			expectNeedsUpdate: false,
@@ -996,6 +990,29 @@ package main
 	assert.Equal(t, expected, string(content))
 }
 
+// resetGitCacheForTest resets the package-level git cache variables to a clean
+// state both before a test runs and after it completes (via t.Cleanup).
+//
+// These variables have no concurrent-access protection in production code, so
+// any test that touches them MUST NOT call t.Parallel(). Centralising the
+// reset here makes the requirement explicit and ensures cleanup happens even
+// when a test fails or panics.
+func resetGitCacheForTest(t *testing.T) {
+	t.Helper()
+	once = sync.Once{}
+	lastCommitYearsCache = nil
+	firstCommitYearCached = 0
+	t.Cleanup(func() {
+		once = sync.Once{}
+		lastCommitYearsCache = nil
+		firstCommitYearCached = 0
+	})
+}
+
+// TestGitOperations exercises the package-level git cache (once,
+// lastCommitYearsCache, firstCommitYearCached). These subtests share that
+// state and must remain sequential — do NOT add t.Parallel() here or to any
+// subtest, as the underlying variables have no concurrent-access protection.
 func TestGitOperations(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git executable not found in PATH; skipping git operations test")
@@ -1058,8 +1075,8 @@ func TestGitOperations(t *testing.T) {
 	})
 
 	t.Run("InitializeGitCache", func(t *testing.T) {
+		resetGitCacheForTest(t)
 		evalRoot, _ := filepath.EvalSymlinks(tempDir)
-		once = sync.Once{}
 		err := InitializeGitCache(evalRoot)
 		require.NoError(t, err)
 		assert.Equal(t, 2020, firstCommitYearCached)
@@ -1069,8 +1086,12 @@ func TestGitOperations(t *testing.T) {
 		assert.Equal(t, 2023, lastCommitYearsCache["test2.txt"])
 	})
 
-	t.Run("InitializeGitCache - Failure", func(t *testing.T) {
-		once = sync.Once{}
+	t.Run("InitializeGitCache - gracefully degrades on invalid repo", func(t *testing.T) {
+		// InitializeGitCache intentionally swallows git errors so that callers
+		// never fail hard when the working directory is not a git repository.
+		// Instead it initialises an empty cache and returns nil,
+		// letting downstream code fall back to config-supplied years.
+		resetGitCacheForTest(t)
 		err := InitializeGitCache("/non/existent/path/for/git/cache")
 		require.NoError(t, err)
 		assert.NotNil(t, lastCommitYearsCache)
@@ -1078,9 +1099,9 @@ func TestGitOperations(t *testing.T) {
 	})
 
 	t.Run("getCachedFileLastCommitYear", func(t *testing.T) {
+		resetGitCacheForTest(t)
 		evalRoot, err := filepath.EvalSymlinks(tempDir)
 		require.NoError(t, err)
-		once = sync.Once{}
 		err = InitializeGitCache(evalRoot)
 		require.NoError(t, err)
 
@@ -1094,8 +1115,8 @@ func TestGitOperations(t *testing.T) {
 	})
 
 	t.Run("getFileLastCommitYear", func(t *testing.T) {
+		resetGitCacheForTest(t)
 		evalRoot, _ := filepath.EvalSymlinks(tempDir)
-		once = sync.Once{}
 		err = InitializeGitCache(evalRoot)
 		require.NoError(t, err)
 
@@ -1110,8 +1131,8 @@ func TestGitOperations(t *testing.T) {
 	})
 
 	t.Run("GetRepoFirstCommitYear", func(t *testing.T) {
+		resetGitCacheForTest(t)
 		evalRoot, _ := filepath.EvalSymlinks(tempDir)
-		once = sync.Once{}
 		year, err := GetRepoFirstCommitYear(evalRoot)
 		require.NoError(t, err)
 		assert.Equal(t, 2020, year)
@@ -1135,6 +1156,7 @@ func TestUpdateCopyrightHeaderWithCache(t *testing.T) {
 
 	tests := []struct {
 		name             string
+		fileName         string
 		initialContent   string
 		targetHolder     string
 		configYear       int
@@ -1146,7 +1168,8 @@ func TestUpdateCopyrightHeaderWithCache(t *testing.T) {
 		expectedContent  string
 	}{
 		{
-			name: "Update start year using repoFirstYear when configYear is 0",
+			name:     "Update start year using repoFirstYear when configYear is 0",
+			fileName: "test.go",
 			initialContent: `// Copyright IBM Corp. 2023
 package main
 `,
@@ -1162,7 +1185,8 @@ package main
 `,
 		},
 		{
-			name: "No update when ignoring year 1 and configYear differs",
+			name:     "No update when ignoring year 1 and configYear differs",
+			fileName: "test.go",
 			initialContent: `// Copyright IBM Corp. 2023, 2023
 package main
 `,
@@ -1175,7 +1199,8 @@ package main
 			expectModified:   false,
 		},
 		{
-			name: "Update end year with forceCurrentYear",
+			name:     "Update end year with forceCurrentYear",
+			fileName: "test.go",
 			initialContent: `// Copyright IBM Corp. 2020, 2022
 package main
 `,
@@ -1191,7 +1216,8 @@ package main
 `,
 		},
 		{
-			name: "Skip .copywrite.hcl file",
+			name:     "Skip .copywrite.hcl file",
+			fileName: ".copywrite.hcl",
 			initialContent: `// Copyright IBM Corp. 2020
 schema_version = 1
 `,
@@ -1204,7 +1230,8 @@ schema_version = 1
 			expectModified:   false,
 		},
 		{
-			name: "Wrong holder (Google Inc.) - no update",
+			name:     "Wrong holder (Google Inc.) - no update",
+			fileName: "test.go",
 			initialContent: `// Copyright (c) Google Inc.
 package main
 `,
@@ -1222,11 +1249,7 @@ package main
 		t.Run(tt.name, func(t *testing.T) {
 			tempDir := t.TempDir()
 
-			fileName := "test.go"
-			if tt.name == "Skip .copywrite.hcl file" {
-				fileName = ".copywrite.hcl"
-			}
-			testFile := filepath.Join(tempDir, fileName)
+			testFile := filepath.Join(tempDir, tt.fileName)
 
 			err := os.WriteFile(testFile, []byte(tt.initialContent), 0644)
 			require.NoError(t, err)

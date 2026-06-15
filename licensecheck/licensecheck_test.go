@@ -21,7 +21,10 @@ func createTempFiles(t *testing.T, fileNames []string) (dirPath string, filePath
 	// create file
 	filePaths = lo.Map(fileNames, func(fileName string, i int) string {
 		filePath := filepath.Join(tempDir, fileName)
-		_ = afero.WriteFile(AppFs, filePath, []byte("Bob Loblaw's Law Blog"), 0644)
+		err := AppFs.MkdirAll(filepath.Dir(filePath), 0755)
+		require.NoError(t, err)
+		err = afero.WriteFile(AppFs, filePath, []byte("Bob Loblaw's Law Blog"), 0644)
+		require.NoError(t, err)
 		return filePath
 	})
 
@@ -100,14 +103,16 @@ func TestAddHeader(t *testing.T) {
 	t.Run("add header to empty file", func(t *testing.T) {
 		tempDir := t.TempDir()
 		filePath := filepath.Join(tempDir, "test.txt")
-		_ = afero.WriteFile(AppFs, filePath, []byte(""), 0644)
+		err := afero.WriteFile(AppFs, filePath, []byte(""), 0644)
+		require.NoError(t, err)
 
 		header := "Copyright (c) 2023 Test Corp"
-		err := AddHeader(filePath, header)
-		assert.Nil(t, err)
+		err = AddHeader(filePath, header)
+		require.NoError(t, err)
 
 		// Read file and verify header was added
-		content, _ := afero.ReadFile(AppFs, filePath)
+		content, err := afero.ReadFile(AppFs, filePath)
+		require.NoError(t, err)
 		assert.Contains(t, string(content), header)
 		// Should have double newline after header
 		assert.Contains(t, string(content), header+"\n\n")
@@ -122,10 +127,11 @@ func TestAddHeader(t *testing.T) {
 
 		header := "Copyright (c) 2023 Test Corp"
 		err = AddHeader(filePath, header)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		// Read file and verify header was prepended
-		content, _ := afero.ReadFile(AppFs, filePath)
+		content, err := afero.ReadFile(AppFs, filePath)
+		require.NoError(t, err)
 		assert.Contains(t, string(content), header)
 		assert.Contains(t, string(content), originalContent)
 		// Header should come before original content
@@ -137,13 +143,15 @@ func TestAddHeader(t *testing.T) {
 	t.Run("add multi-line header", func(t *testing.T) {
 		tempDir := t.TempDir()
 		filePath := filepath.Join(tempDir, "test.txt")
-		_ = afero.WriteFile(AppFs, filePath, []byte("Original content"), 0644)
+		err := afero.WriteFile(AppFs, filePath, []byte("Original content"), 0644)
+		require.NoError(t, err)
 
 		header := "Copyright (c) 2023 Test Corp\nSPDX-License-Identifier: MPL-2.0"
-		err := AddHeader(filePath, header)
-		assert.Nil(t, err)
+		err = AddHeader(filePath, header)
+		require.NoError(t, err)
 
-		content, _ := afero.ReadFile(AppFs, filePath)
+		content, err := afero.ReadFile(AppFs, filePath)
+		require.NoError(t, err)
 		assert.Contains(t, string(content), "Copyright (c) 2023 Test Corp")
 		assert.Contains(t, string(content), "SPDX-License-Identifier: MPL-2.0")
 		assert.Contains(t, string(content), "Original content")
@@ -166,11 +174,13 @@ func TestAddLicenseFile(t *testing.T) {
 		assert.NotEmpty(t, licensePath)
 
 		// Verify file exists
-		fileExists, _ := afero.Exists(AppFs, licensePath)
+		fileExists, err := afero.Exists(AppFs, licensePath)
+		require.NoError(t, err)
 		assert.True(t, fileExists)
 
 		// Verify content contains MPL-2.0 license text
-		content, _ := afero.ReadFile(AppFs, licensePath)
+		content, err := afero.ReadFile(AppFs, licensePath)
+		require.NoError(t, err)
 		assert.Contains(t, string(content), "Mozilla Public License")
 	})
 
@@ -179,7 +189,8 @@ func TestAddLicenseFile(t *testing.T) {
 		licensePath, err := AddLicenseFile(tempDir, "Apache-2.0")
 		assert.Nil(t, err)
 
-		content, _ := afero.ReadFile(AppFs, licensePath)
+		content, err := afero.ReadFile(AppFs, licensePath)
+		require.NoError(t, err)
 		assert.Contains(t, string(content), "Apache License")
 	})
 
@@ -188,7 +199,8 @@ func TestAddLicenseFile(t *testing.T) {
 		licensePath, err := AddLicenseFile(tempDir, "MIT")
 		assert.Nil(t, err)
 
-		content, _ := afero.ReadFile(AppFs, licensePath)
+		content, err := afero.ReadFile(AppFs, licensePath)
+		require.NoError(t, err)
 		assert.Contains(t, string(content), "Permission is hereby granted")
 	})
 
@@ -281,7 +293,7 @@ func TestFindLicenseFiles(t *testing.T) {
 		},
 		{
 			description:    "Don't match directories",
-			input:          []string{"LICENSE", "license/blah.txt"},
+			input:          []string{"LICENSE", "subdir/blah.txt"},
 			expectedOutput: []string{"LICENSE"},
 		},
 	}
@@ -291,6 +303,7 @@ func TestFindLicenseFiles(t *testing.T) {
 			tempDir, _ := createTempFiles(t, tt.input)
 			// run test
 			actualOutput, err := FindLicenseFiles(tempDir)
+			require.NoError(t, err)
 			// validate file was renamed successfully
 			expectedOutputPaths := lo.Map(tt.expectedOutput, func(p string, _ int) string {
 				return filepath.Join(tempDir, p)
@@ -320,12 +333,14 @@ func TestFindLicenseFiles_ErrorHandling(t *testing.T) {
 
 		// Create a subdirectory with a LICENSE file
 		subDir := filepath.Join(tempDir, "subdir")
-		_ = AppFs.MkdirAll(subDir, 0755)
-		_ = afero.WriteFile(AppFs, filepath.Join(subDir, "LICENSE"), []byte("sublicense"), 0644)
+		err := AppFs.MkdirAll(subDir, 0755)
+		require.NoError(t, err)
+		err = afero.WriteFile(AppFs, filepath.Join(subDir, "LICENSE"), []byte("sublicense"), 0644)
+		require.NoError(t, err)
 
 		// FindLicenseFiles should only find files in the top-level directory, not subdirs
 		result, err := FindLicenseFiles(tempDir)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, []string{}, result)
 	})
 }

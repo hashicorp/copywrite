@@ -142,8 +142,10 @@ func TestHasMatchingCopyright(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.description, func(t *testing.T) {
-			f, _ := afero.TempFile(AppFs, tempDir, "")
-			_ = afero.WriteFile(AppFs, f.Name(), []byte(tt.fileContents), 0644)
+			f, err := afero.TempFile(AppFs, tempDir, "")
+			require.NoError(t, err)
+			err = afero.WriteFile(AppFs, f.Name(), []byte(tt.fileContents), 0644)
+			require.NoError(t, err)
 			// run test
 			actualValid, err := HasMatchingCopyright(f.Name(), desiredCopyrightString, tt.caseSensitive)
 			assert.ErrorIs(t, err, tt.expectedError, tt.description)
@@ -265,8 +267,10 @@ func TestHasCopyright(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.description, func(t *testing.T) {
-			f, _ := afero.TempFile(AppFs, tempDir, "")
-			_ = afero.WriteFile(AppFs, f.Name(), []byte(tt.fileContents), 0644)
+			f, err := afero.TempFile(AppFs, tempDir, "")
+			require.NoError(t, err)
+			err = afero.WriteFile(AppFs, f.Name(), []byte(tt.fileContents), 0644)
+			require.NoError(t, err)
 			// run test
 			actualValid, err := HasCopyright(f.Name())
 			assert.ErrorIs(t, err, tt.expectedError, tt.description)
@@ -287,9 +291,9 @@ func TestHasMatchingCopyright_EdgeCases(t *testing.T) {
 	AppFs := afero.NewOsFs()
 	tempDir := t.TempDir()
 
-	t.Run("file exactly 300 bytes with copyright at end", func(t *testing.T) {
-		// Create a file exactly 300 bytes where "Copyright" appears at byte 290
-		padding := make([]byte, 290)
+	t.Run("file exactly copyrightHeaderBytes bytes with copyright at end", func(t *testing.T) {
+		// Create a file exactly copyrightHeaderBytes bytes where "Copyright" appears near the end
+		padding := make([]byte, copyrightHeaderBytes-10)
 		for i := range padding {
 			padding[i] = 'A'
 		}
@@ -305,7 +309,7 @@ func TestHasMatchingCopyright_EdgeCases(t *testing.T) {
 		assert.True(t, hasCopyright)
 	})
 
-	t.Run("file less than 300 bytes", func(t *testing.T) {
+	t.Run("file less than copyrightHeaderBytes bytes", func(t *testing.T) {
 		content := "Short file with Copyright notice"
 
 		f, err := afero.TempFile(AppFs, tempDir, "")
@@ -318,26 +322,30 @@ func TestHasMatchingCopyright_EdgeCases(t *testing.T) {
 		assert.True(t, hasCopyright)
 	})
 
-	t.Run("file larger than 300 bytes with copyright after header", func(t *testing.T) {
-		// Create content > 300 bytes with copyright appearing after byte 300
-		header := make([]byte, 350)
+	t.Run("file larger than copyrightHeaderBytes bytes with copyright after header", func(t *testing.T) {
+		// Create content > copyrightHeaderBytes bytes with copyright appearing after the header
+		header := make([]byte, copyrightHeaderBytes+50)
 		for i := range header {
 			header[i] = 'X'
 		}
 		content := string(header) + "\nCopyright notice here"
 
-		f, _ := afero.TempFile(AppFs, tempDir, "")
-		_ = afero.WriteFile(AppFs, f.Name(), []byte(content), 0644)
+		f, err := afero.TempFile(AppFs, tempDir, "")
+		require.NoError(t, err)
+		err = afero.WriteFile(AppFs, f.Name(), []byte(content), 0644)
+		require.NoError(t, err)
 
-		// Should not find copyright since it's after the 300-byte header check
+		// Should not find copyright since it's after the copyrightHeaderBytes-byte header check
 		hasCopyright, err := HasMatchingCopyright(f.Name(), "Copyright", false)
 		assert.Nil(t, err)
 		assert.False(t, hasCopyright)
 	})
 
 	t.Run("empty search string", func(t *testing.T) {
-		f, _ := afero.TempFile(AppFs, tempDir, "")
-		_ = afero.WriteFile(AppFs, f.Name(), []byte("Some content"), 0644)
+		f, err := afero.TempFile(AppFs, tempDir, "")
+		require.NoError(t, err)
+		err = afero.WriteFile(AppFs, f.Name(), []byte("Some content"), 0644)
+		require.NoError(t, err)
 
 		// Empty string should always be found
 		hasCopyright, err := HasMatchingCopyright(f.Name(), "", false)
@@ -346,8 +354,10 @@ func TestHasMatchingCopyright_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("search string longer than file", func(t *testing.T) {
-		f, _ := afero.TempFile(AppFs, tempDir, "")
-		_ = afero.WriteFile(AppFs, f.Name(), []byte("Short"), 0644)
+		f, err := afero.TempFile(AppFs, tempDir, "")
+		require.NoError(t, err)
+		err = afero.WriteFile(AppFs, f.Name(), []byte("Short"), 0644)
+		require.NoError(t, err)
 
 		hasCopyright, err := HasMatchingCopyright(f.Name(), "This is a very long copyright statement that is longer than the file content", false)
 		assert.Nil(t, err)
