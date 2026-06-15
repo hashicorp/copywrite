@@ -14,6 +14,40 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
+// clearAppEnv blanks the three GitHub App env vars so tests start clean.
+func clearAppEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("APP_ID", "")
+	t.Setenv("INSTALLATION_ID", "")
+	t.Setenv("APP_PEM", "")
+}
+
+// disableHomedirCache disables go-homedir's cache for the duration of a test.
+func disableHomedirCache(t *testing.T) {
+	t.Helper()
+	homedir.DisableCache = true
+	t.Cleanup(func() { homedir.DisableCache = false })
+}
+
+// unsetGitHubToken removes GITHUB_TOKEN for the duration of a test and
+// restores it (or leaves it unset) when the test ends.
+func unsetGitHubToken(t *testing.T) {
+	t.Helper()
+	prev, had := os.LookupEnv("GITHUB_TOKEN")
+	require.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
+	t.Cleanup(func() {
+		if had {
+			if err := os.Setenv("GITHUB_TOKEN", prev); err != nil {
+				t.Errorf("cleanup: failed to restore GITHUB_TOKEN: %v", err)
+			}
+		} else {
+			if err := os.Unsetenv("GITHUB_TOKEN"); err != nil {
+				t.Errorf("cleanup: failed to unset GITHUB_TOKEN: %v", err)
+			}
+		}
+	})
+}
+
 func TestGHClient_Raw(t *testing.T) {
 	client := NewGHClient()
 	require.NotNil(t, client)
@@ -150,8 +184,7 @@ func TestGetGHAppConfig(t *testing.T) {
 // NOTE: This test mutates homedir.DisableCache (global state)
 // and must NOT use t.Parallel().
 func TestGetGitHubCLIConfig(t *testing.T) {
-	homedir.DisableCache = true
-	t.Cleanup(func() { homedir.DisableCache = false })
+	disableHomedirCache(t)
 	tests := []struct {
 		name        string
 		configData  string
@@ -234,10 +267,7 @@ func TestGetGitHubCLIConfig(t *testing.T) {
 }
 
 func TestNewGHClient_WithGitHubToken(t *testing.T) {
-	// Ensure no App config
-	t.Setenv("APP_ID", "")
-	t.Setenv("INSTALLATION_ID", "")
-	t.Setenv("APP_PEM", "")
+	clearAppEnv(t)
 
 	t.Setenv("GITHUB_TOKEN", "ghp_test_token_12345")
 
@@ -248,23 +278,10 @@ func TestNewGHClient_WithGitHubToken(t *testing.T) {
 }
 
 func TestNewGHClient_UnauthenticatedFallback(t *testing.T) {
-	homedir.DisableCache = true
-	t.Cleanup(func() { homedir.DisableCache = false })
-	// Ensure no App config
-	t.Setenv("APP_ID", "")
-	t.Setenv("INSTALLATION_ID", "")
-	t.Setenv("APP_PEM", "")
-
+	disableHomedirCache(t)
+	clearAppEnv(t)
 	// Ensure no GITHUB_TOKEN — must unset, not empty, because NewGHClient uses os.LookupEnv
-	prev, had := os.LookupEnv("GITHUB_TOKEN")
-	require.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
-	t.Cleanup(func() {
-		if had {
-			_ = os.Setenv("GITHUB_TOKEN", prev)
-		} else {
-			_ = os.Unsetenv("GITHUB_TOKEN")
-		}
-	})
+	unsetGitHubToken(t)
 
 	// Set HOME to a temp dir with no gh config
 	tmpHome := t.TempDir()
@@ -277,23 +294,10 @@ func TestNewGHClient_UnauthenticatedFallback(t *testing.T) {
 }
 
 func TestNewGHClient_WithGHCLIConfig(t *testing.T) {
-	homedir.DisableCache = true
-	t.Cleanup(func() { homedir.DisableCache = false })
-	// Ensure no App config
-	t.Setenv("APP_ID", "")
-	t.Setenv("INSTALLATION_ID", "")
-	t.Setenv("APP_PEM", "")
-
+	disableHomedirCache(t)
+	clearAppEnv(t)
 	// Ensure no GITHUB_TOKEN — must unset, not empty, because NewGHClient uses os.LookupEnv
-	prev, had := os.LookupEnv("GITHUB_TOKEN")
-	require.NoError(t, os.Unsetenv("GITHUB_TOKEN"))
-	t.Cleanup(func() {
-		if had {
-			_ = os.Setenv("GITHUB_TOKEN", prev)
-		} else {
-			_ = os.Unsetenv("GITHUB_TOKEN")
-		}
-	})
+	unsetGitHubToken(t)
 
 	// Set up gh CLI config
 	tmpHome := t.TempDir()
@@ -341,11 +345,15 @@ func TestGetGHAppConfig_WithDotEnvFile(t *testing.T) {
 	unsetAppEnv := func(t *testing.T) {
 		t.Helper()
 		for _, key := range []string{"APP_ID", "INSTALLATION_ID", "APP_PEM"} {
-			_ = os.Unsetenv(key)
+			if err := os.Unsetenv(key); err != nil {
+				t.Errorf("failed to unset %s: %v", key, err)
+			}
 		}
 		t.Cleanup(func() {
 			for _, key := range []string{"APP_ID", "INSTALLATION_ID", "APP_PEM"} {
-				_ = os.Unsetenv(key)
+				if err := os.Unsetenv(key); err != nil {
+					t.Errorf("cleanup: failed to unset %s: %v", key, err)
+				}
 			}
 		})
 	}

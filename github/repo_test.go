@@ -38,7 +38,7 @@ func TestGetRepoCreationYear(t *testing.T) {
 					CreatedAt: &gogithub.Timestamp{Time: time.Date(2021, 6, 15, 0, 0, 0, 0, time.UTC)},
 				}
 				w.Header().Set("Content-Type", "application/json")
-				_ = json.NewEncoder(w).Encode(repoData)
+				require.NoError(t, json.NewEncoder(w).Encode(repoData))
 			},
 			wantYear: 2021,
 			wantErr:  false,
@@ -53,7 +53,7 @@ func TestGetRepoCreationYear(t *testing.T) {
 					CreatedAt: &gogithub.Timestamp{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
 				}
 				w.Header().Set("Content-Type", "application/json")
-				_ = json.NewEncoder(w).Encode(repoData)
+				require.NoError(t, json.NewEncoder(w).Encode(repoData))
 			},
 			wantYear: 2023,
 			wantErr:  false,

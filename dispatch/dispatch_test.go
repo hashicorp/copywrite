@@ -13,14 +13,17 @@ import (
 	"github.com/google/go-github/v45/github"
 	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setupMockServer is a helper function to mock the GitHub API endpoint.
-func setupMockServer() (*github.Client, *http.ServeMux, *httptest.Server) {
+func setupMockServer(t *testing.T) (*github.Client, *http.ServeMux, *httptest.Server) {
+	t.Helper()
 	mux := http.NewServeMux()
 	server := httptest.NewServer(mux)
 	client := github.NewClient(server.Client())
-	u, _ := url.Parse(server.URL + "/")
+	u, err := url.Parse(server.URL + "/")
+	require.NoError(t, err)
 	client.BaseURL = u
 	return client, mux, server
 }
@@ -35,7 +38,7 @@ func TestWaitRunFinished(t *testing.T) {
 	}
 
 	t.Run("short circuit completed", func(t *testing.T) {
-		client, _, server := setupMockServer()
+		client, _, server := setupMockServer(t)
 		defer server.Close()
 
 		run := github.WorkflowRun{
@@ -49,7 +52,7 @@ func TestWaitRunFinished(t *testing.T) {
 	})
 
 	t.Run("polls and completes", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		run := github.WorkflowRun{
@@ -62,9 +65,13 @@ func TestWaitRunFinished(t *testing.T) {
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/runs/2", func(w http.ResponseWriter, r *http.Request) {
 			calls++
 			if calls == 1 {
-				_, _ = fmt.Fprint(w, `{"id": 2, "status": "in_progress"}`)
+				if _, err := fmt.Fprint(w, `{"id": 2, "status": "in_progress"}`); err != nil {
+					t.Errorf("mock write failed: %v", err)
+				}
 			} else {
-				_, _ = fmt.Fprint(w, `{"id": 2, "status": "completed"}`)
+				if _, err := fmt.Fprint(w, `{"id": 2, "status": "completed"}`); err != nil {
+					t.Errorf("mock write failed: %v", err)
+				}
 			}
 		})
 
@@ -74,7 +81,7 @@ func TestWaitRunFinished(t *testing.T) {
 	})
 
 	t.Run("unrepairable state", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		run := github.WorkflowRun{
@@ -84,7 +91,9 @@ func TestWaitRunFinished(t *testing.T) {
 		}
 
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/runs/3", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = fmt.Fprint(w, `{"id": 3, "status": "failed"}`)
+			if _, err := fmt.Fprint(w, `{"id": 3, "status": "failed"}`); err != nil {
+				t.Errorf("mock write failed: %v", err)
+			}
 		})
 
 		err := WaitRunFinished(client, baseOpts, run)
@@ -93,7 +102,7 @@ func TestWaitRunFinished(t *testing.T) {
 	})
 
 	t.Run("timeout", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		run := github.WorkflowRun{
@@ -103,7 +112,9 @@ func TestWaitRunFinished(t *testing.T) {
 		}
 
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/runs/4", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = fmt.Fprint(w, `{"id": 4, "status": "in_progress"}`)
+			if _, err := fmt.Fprint(w, `{"id": 4, "status": "in_progress"}`); err != nil {
+				t.Errorf("mock write failed: %v", err)
+			}
 		})
 
 		err := WaitRunFinished(client, baseOpts, run)
@@ -112,7 +123,7 @@ func TestWaitRunFinished(t *testing.T) {
 	})
 
 	t.Run("api error", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		run := github.WorkflowRun{
@@ -142,11 +153,13 @@ func TestFindRun(t *testing.T) {
 	}
 
 	t.Run("finds on first attempt", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/workflows/test.yml/runs", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = fmt.Fprint(w, `{"workflow_runs": [{"id": 1, "name": "my-run", "status": "queued"}]}`)
+			if _, err := fmt.Fprint(w, `{"workflow_runs": [{"id": 1, "name": "my-run", "status": "queued"}]}`); err != nil {
+				t.Errorf("mock write failed: %v", err)
+			}
 		})
 
 		run, err := FindRun(client, baseOpts, "my-run")
@@ -155,16 +168,20 @@ func TestFindRun(t *testing.T) {
 	})
 
 	t.Run("polls and finds", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		calls := 0
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/workflows/test.yml/runs", func(w http.ResponseWriter, r *http.Request) {
 			calls++
 			if calls == 1 {
-				_, _ = fmt.Fprint(w, `{"workflow_runs": []}`)
+				if _, err := fmt.Fprint(w, `{"workflow_runs": []}`); err != nil {
+					t.Errorf("mock write failed: %v", err)
+				}
 			} else {
-				_, _ = fmt.Fprint(w, `{"workflow_runs": [{"id": 2, "name": "my-run-2", "status": "queued"}]}`)
+				if _, err := fmt.Fprint(w, `{"workflow_runs": [{"id": 2, "name": "my-run-2", "status": "queued"}]}`); err != nil {
+					t.Errorf("mock write failed: %v", err)
+				}
 			}
 		})
 
@@ -175,11 +192,13 @@ func TestFindRun(t *testing.T) {
 	})
 
 	t.Run("timeout", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/workflows/test.yml/runs", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = fmt.Fprint(w, `{"workflow_runs": []}`)
+			if _, err := fmt.Fprint(w, `{"workflow_runs": []}`); err != nil {
+				t.Errorf("mock write failed: %v", err)
+			}
 		})
 
 		_, err := FindRun(client, baseOpts, "my-run-3")
@@ -188,7 +207,7 @@ func TestFindRun(t *testing.T) {
 	})
 
 	t.Run("api error", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/workflows/test.yml/runs", func(w http.ResponseWriter, r *http.Request) {
@@ -214,17 +233,21 @@ func TestWorker(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/workflows/test.yml/dispatches", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 		})
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/workflows/test.yml/runs", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = fmt.Fprint(w, `{"workflow_runs": [{"id": 1, "name": "batch123: Audit test-repo", "status": "queued"}]}`)
+			if _, err := fmt.Fprint(w, `{"workflow_runs": [{"id": 1, "name": "batch123: Audit test-repo", "status": "queued"}]}`); err != nil {
+				t.Errorf("mock write failed: %v", err)
+			}
 		})
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/runs/1", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = fmt.Fprint(w, `{"id": 1, "status": "completed"}`)
+			if _, err := fmt.Fprint(w, `{"id": 1, "status": "completed"}`); err != nil {
+				t.Errorf("mock write failed: %v", err)
+			}
 		})
 
 		jobs := make(chan string, 1)
@@ -241,7 +264,7 @@ func TestWorker(t *testing.T) {
 	})
 
 	t.Run("dispatch fails", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/workflows/test.yml/dispatches", func(w http.ResponseWriter, r *http.Request) {
@@ -261,7 +284,7 @@ func TestWorker(t *testing.T) {
 	})
 
 	t.Run("find fails", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		// Dispatch works, but the run search throws an error
@@ -286,7 +309,7 @@ func TestWorker(t *testing.T) {
 	})
 
 	t.Run("wait fails with unrepairable state", func(t *testing.T) {
-		client, mux, server := setupMockServer()
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
 
 		// Dispatch succeeds
@@ -295,11 +318,15 @@ func TestWorker(t *testing.T) {
 		})
 		// FindRun succeeds
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/workflows/test.yml/runs", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = fmt.Fprint(w, `{"workflow_runs": [{"id": 10, "name": "batch123: Audit test-repo", "status": "queued"}]}`)
+			if _, err := fmt.Fprint(w, `{"workflow_runs": [{"id": 10, "name": "batch123: Audit test-repo", "status": "queued"}]}`); err != nil {
+				t.Errorf("mock write failed: %v", err)
+			}
 		})
 		// WaitRunFinished hits an unrepairable state
 		mux.HandleFunc("/repos/testOrg/testRepo/actions/runs/10", func(w http.ResponseWriter, r *http.Request) {
-			_, _ = fmt.Fprint(w, `{"id": 10, "status": "failed"}`)
+			if _, err := fmt.Fprint(w, `{"id": 10, "status": "failed"}`); err != nil {
+				t.Errorf("mock write failed: %v", err)
+			}
 		})
 
 		jobs := make(chan string, 1)
