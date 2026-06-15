@@ -32,6 +32,10 @@ func TestDebugCmd_Help(t *testing.T) {
 	buf := new(bytes.Buffer)
 	debugCmd.SetOut(buf)
 	debugCmd.SetErr(buf)
+	t.Cleanup(func() {
+		debugCmd.SetOut(nil)
+		debugCmd.SetErr(nil)
+	})
 
 	err := debugCmd.Help()
 	require.NoError(t, err)

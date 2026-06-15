@@ -26,6 +26,10 @@ func TestReportCmd_Help(t *testing.T) {
 	buf := new(bytes.Buffer)
 	reportCmd.SetOut(buf)
 	reportCmd.SetErr(buf)
+	t.Cleanup(func() {
+		reportCmd.SetOut(nil)
+		reportCmd.SetErr(nil)
+	})
 
 	err := reportCmd.Help()
 	require.NoError(t, err)
@@ -67,6 +71,10 @@ func TestReportPRsCmd_Help(t *testing.T) {
 	buf := new(bytes.Buffer)
 	reportPRsCmd.SetOut(buf)
 	reportPRsCmd.SetErr(buf)
+	t.Cleanup(func() {
+		reportPRsCmd.SetOut(nil)
+		reportPRsCmd.SetErr(nil)
+	})
 
 	err := reportPRsCmd.Help()
 	require.NoError(t, err)
@@ -100,6 +108,10 @@ func TestReportReposCmd_Help(t *testing.T) {
 	buf := new(bytes.Buffer)
 	reportReposCmd.SetOut(buf)
 	reportReposCmd.SetErr(buf)
+	t.Cleanup(func() {
+		reportReposCmd.SetOut(nil)
+		reportReposCmd.SetErr(nil)
+	})
 
 	err := reportReposCmd.Help()
 	require.NoError(t, err)

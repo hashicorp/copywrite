@@ -13,18 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// resetRootCmd restores rootCmd output and args to defaults after a test.
-func resetRootCmd(t *testing.T) {
-	t.Helper()
-	t.Cleanup(func() {
-		rootCmd.SetOut(nil)
-		rootCmd.SetErr(nil)
-		rootCmd.SetArgs(nil)
-	})
-}
-
 func TestRootCmd_VersionFlag(t *testing.T) {
-	resetRootCmd(t)
+	restoreRootCmd(t)
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
@@ -38,7 +28,7 @@ func TestRootCmd_VersionFlag(t *testing.T) {
 }
 
 func TestRootCmd_HelpFlag(t *testing.T) {
-	resetRootCmd(t)
+	restoreRootCmd(t)
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
@@ -53,7 +43,7 @@ func TestRootCmd_HelpFlag(t *testing.T) {
 }
 
 func TestRootCmd_UnknownCommand(t *testing.T) {
-	resetRootCmd(t)
+	restoreRootCmd(t)
 	buf := new(bytes.Buffer)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)

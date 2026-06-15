@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/copywrite/config"
 	"github.com/stretchr/testify/assert"
@@ -201,40 +202,14 @@ func Test_configToHCL_ContainsProjectBlock(t *testing.T) {
 }
 
 func TestInitCmd_Run_NoTTY(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Initialize git repo for github.DiscoverRepo() — will fail gracefully
-	cmds := [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@test.com"},
-		{"git", "config", "user.name", "Test"},
-	}
-	for _, args := range cmds {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = tmpDir
-		require.NoError(t, cmd.Run())
-	}
-
-	// Create dummy commit
-	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "dummy.go"), []byte("package main"), 0644))
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-	cmd = exec.Command("git", "commit", "-m", "init")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-
+	tmpDir := newGitRepo(t, time.Now())
 	t.Chdir(tmpDir)
 
 	buf := new(bytes.Buffer)
+	restoreRootCmd(t)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"init", "--spdx", "MPL-2.0", "--year", "2023"})
-	t.Cleanup(func() {
-		rootCmd.SetOut(nil)
-		rootCmd.SetErr(nil)
-		rootCmd.SetArgs(nil)
-	})
 
 	err := rootCmd.Execute()
 	require.NoError(t, err)
@@ -291,26 +266,7 @@ project {
 }
 
 func TestInitCmd_PreRun_ForceOverwrite(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Initialize git repo
-	cmds := [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@test.com"},
-		{"git", "config", "user.name", "Test"},
-	}
-	for _, args := range cmds {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = tmpDir
-		require.NoError(t, cmd.Run())
-	}
-	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "dummy.go"), []byte("package main"), 0644))
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
-	cmd = exec.Command("git", "commit", "-m", "init")
-	cmd.Dir = tmpDir
-	require.NoError(t, cmd.Run())
+	tmpDir := newGitRepo(t, time.Now())
 
 	// Create existing .copywrite.hcl with valid HCL content
 	validHCL := `schema_version = 1
@@ -324,14 +280,10 @@ project {
 	t.Chdir(tmpDir)
 
 	buf := new(bytes.Buffer)
+	restoreRootCmd(t)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"init", "--force", "--spdx", "MIT", "--year", "2022"})
-	t.Cleanup(func() {
-		rootCmd.SetOut(nil)
-		rootCmd.SetErr(nil)
-		rootCmd.SetArgs(nil)
-	})
 
 	err := rootCmd.Execute()
 	require.NoError(t, err)

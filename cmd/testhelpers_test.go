@@ -54,3 +54,27 @@ func gitAddCommit(t *testing.T, dir, message string) {
 	cmd.Dir = dir
 	require.NoError(t, cmd.Run())
 }
+
+// restoreHeadersCmd saves headersCmd's current output/error writers and
+// schedules their restoration via t.Cleanup, preventing tests from leaking
+// writer state into each other.
+func restoreHeadersCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := headersCmd.OutOrStdout(), headersCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		headersCmd.SetOut(origOut)
+		headersCmd.SetErr(origErr)
+	})
+}
+
+// restoreRootCmd saves rootCmd's current output/error writers and schedules
+// their restoration via t.Cleanup. It also resets SetArgs to nil on cleanup.
+func restoreRootCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		rootCmd.SetOut(origOut)
+		rootCmd.SetErr(origErr)
+		rootCmd.SetArgs(nil)
+	})
+}
