@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/copywrite/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -61,10 +62,16 @@ func TestRootCmd_ConfigFlag(t *testing.T) {
 
 func Test_initConfig_FileNotExist(t *testing.T) {
 	oldCfgPath := cfgPath
-	defer func() { cfgPath = oldCfgPath }()
+	t.Cleanup(func() {
+		cfgPath = oldCfgPath
+		conf = config.MustNew()
+	})
 
-	cfgPath = "/tmp/nonexistent_copywrite_test_config_12345.hcl"
+	cfgPath = filepath.Join(t.TempDir(), "nonexistent.hcl")
 	initConfig()
+
+	assert.Equal(t, "", conf.Project.License)
+	assert.Equal(t, 1, conf.SchemaVersion)
 }
 
 func Test_initConfig_ValidFile(t *testing.T) {
@@ -82,10 +89,17 @@ project {
 	require.NoError(t, err)
 
 	oldCfgPath := cfgPath
-	defer func() { cfgPath = oldCfgPath }()
+	t.Cleanup(func() {
+		cfgPath = oldCfgPath
+		conf = config.MustNew()
+	})
 
 	cfgPath = configPath
 	initConfig()
+
+	assert.Equal(t, 1, conf.SchemaVersion)
+	assert.Equal(t, "MPL-2.0", conf.Project.License)
+	assert.Equal(t, 2023, conf.Project.CopyrightYear)
 }
 
 func Test_initLogger_DefaultLevel(t *testing.T) {

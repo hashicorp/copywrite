@@ -167,6 +167,7 @@ func TestInitCmd_Flags(t *testing.T) {
 }
 
 func TestInitCmd_Help(t *testing.T) {
+	restoreInitCmd(t)
 	buf := new(bytes.Buffer)
 	initCmd.SetOut(buf)
 	initCmd.SetErr(buf)
@@ -202,11 +203,11 @@ func Test_configToHCL_ContainsProjectBlock(t *testing.T) {
 }
 
 func TestInitCmd_Run_NoTTY(t *testing.T) {
+	restoreRootCmd(t)
 	tmpDir := newGitRepo(t, time.Now())
 	t.Chdir(tmpDir)
 
 	buf := new(bytes.Buffer)
-	restoreRootCmd(t)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"init", "--spdx", "MPL-2.0", "--year", "2023"})
@@ -266,6 +267,7 @@ project {
 }
 
 func TestInitCmd_PreRun_ForceOverwrite(t *testing.T) {
+	restoreRootCmd(t)
 	tmpDir := newGitRepo(t, time.Now())
 
 	// Create existing .copywrite.hcl with valid HCL content
@@ -280,7 +282,6 @@ project {
 	t.Chdir(tmpDir)
 
 	buf := new(bytes.Buffer)
-	restoreRootCmd(t)
 	rootCmd.SetOut(buf)
 	rootCmd.SetErr(buf)
 	rootCmd.SetArgs([]string{"init", "--force", "--spdx", "MIT", "--year", "2022"})

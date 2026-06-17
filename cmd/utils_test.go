@@ -90,10 +90,10 @@ func TestGetVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			oldVersion := version
 			oldCommit := commit
-			defer func() {
+			t.Cleanup(func() {
 				version = oldVersion
 				commit = oldCommit
-			}()
+			})
 
 			version = tt.version
 			commit = tt.commit

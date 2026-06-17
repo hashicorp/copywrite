@@ -55,6 +55,18 @@ func gitAddCommit(t *testing.T, dir, message string) {
 	require.NoError(t, cmd.Run())
 }
 
+// restoreDebugCmd saves debugCmd's current output/error writers and schedules
+// their restoration via t.Cleanup, preventing tests from leaking writer state
+// into each other.
+func restoreDebugCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := debugCmd.OutOrStdout(), debugCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		debugCmd.SetOut(origOut)
+		debugCmd.SetErr(origErr)
+	})
+}
+
 // restoreHeadersCmd saves headersCmd's current output/error writers and
 // schedules their restoration via t.Cleanup, preventing tests from leaking
 // writer state into each other.
@@ -64,6 +76,55 @@ func restoreHeadersCmd(t *testing.T) {
 	t.Cleanup(func() {
 		headersCmd.SetOut(origOut)
 		headersCmd.SetErr(origErr)
+	})
+}
+
+// restoreReportCmd saves reportCmd's current output/error writers and schedules
+// their restoration via t.Cleanup, preventing tests from leaking writer state
+// into each other.
+func restoreReportCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := reportCmd.OutOrStdout(), reportCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		reportCmd.SetOut(origOut)
+		reportCmd.SetErr(origErr)
+	})
+}
+
+// restoreReportPRsCmd saves reportPRsCmd's current output/error writers and
+// schedules their restoration via t.Cleanup, preventing tests from leaking
+// writer state into each other.
+func restoreReportPRsCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := reportPRsCmd.OutOrStdout(), reportPRsCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		reportPRsCmd.SetOut(origOut)
+		reportPRsCmd.SetErr(origErr)
+	})
+}
+
+// restoreReportReposCmd saves reportReposCmd's current output/error writers and
+// schedules their restoration via t.Cleanup, preventing tests from leaking
+// writer state into each other.
+func restoreReportReposCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := reportReposCmd.OutOrStdout(), reportReposCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		reportReposCmd.SetOut(origOut)
+		reportReposCmd.SetErr(origErr)
+	})
+}
+
+// restoreInitCmd saves initCmd's current output/error writers and schedules
+// their restoration via t.Cleanup, preventing tests from leaking writer state
+// into each other. It also resets SetArgs to nil on cleanup.
+func restoreInitCmd(t *testing.T) {
+	t.Helper()
+	origOut, origErr := initCmd.OutOrStdout(), initCmd.ErrOrStderr()
+	t.Cleanup(func() {
+		initCmd.SetOut(origOut)
+		initCmd.SetErr(origErr)
+		initCmd.SetArgs(nil)
 	})
 }
 

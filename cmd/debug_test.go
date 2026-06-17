@@ -29,13 +29,10 @@ func TestDebugCmd_Flags(t *testing.T) {
 }
 
 func TestDebugCmd_Help(t *testing.T) {
+	restoreDebugCmd(t)
 	buf := new(bytes.Buffer)
 	debugCmd.SetOut(buf)
 	debugCmd.SetErr(buf)
-	t.Cleanup(func() {
-		debugCmd.SetOut(nil)
-		debugCmd.SetErr(nil)
-	})
 
 	err := debugCmd.Help()
 	require.NoError(t, err)
