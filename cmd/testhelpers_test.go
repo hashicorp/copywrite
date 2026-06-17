@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/copywrite/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -137,5 +138,6 @@ func restoreRootCmd(t *testing.T) {
 		rootCmd.SetOut(origOut)
 		rootCmd.SetErr(origErr)
 		rootCmd.SetArgs(nil)
+		conf = config.MustNew()
 	})
 }
