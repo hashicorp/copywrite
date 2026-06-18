@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2023, 2025
+// Copyright IBM Corp. 2023, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package github
@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/mitchellh/go-homedir"
+	"golang.org/x/oauth2"
 )
 
 // clearAppEnv blanks the three GitHub App env vars so tests start clean.
@@ -275,6 +276,8 @@ func TestNewGHClient_WithGitHubToken(t *testing.T) {
 	require.NotNil(t, client)
 	assert.NotNil(t, client.gh)
 	assert.NotNil(t, client.Raw())
+	_, ok := client.Raw().Client().Transport.(*oauth2.Transport)
+	assert.True(t, ok, "expected oauth2 transport for GITHUB_TOKEN client")
 }
 
 func TestNewGHClient_UnauthenticatedFallback(t *testing.T) {
@@ -291,6 +294,7 @@ func TestNewGHClient_UnauthenticatedFallback(t *testing.T) {
 	require.NotNil(t, client)
 	assert.NotNil(t, client.gh)
 	assert.NotNil(t, client.Raw())
+	assert.Nil(t, client.Raw().Client().Transport, "expected unauthenticated client: transport should be nil")
 }
 
 func TestNewGHClient_WithGHCLIConfig(t *testing.T) {
@@ -319,6 +323,8 @@ func TestNewGHClient_WithGHCLIConfig(t *testing.T) {
 	require.NotNil(t, client)
 	assert.NotNil(t, client.gh)
 	assert.NotNil(t, client.Raw())
+	_, ok := client.Raw().Client().Transport.(*oauth2.Transport)
+	assert.True(t, ok, "expected oauth2 transport for gh CLI config client")
 }
 
 func TestNewGHClient_WithInvalidGHAppConfig(t *testing.T) {
@@ -331,6 +337,7 @@ func TestNewGHClient_WithInvalidGHAppConfig(t *testing.T) {
 	// The function logs an error but still returns a client
 	client := NewGHClient()
 	require.NotNil(t, client)
+	assert.Nil(t, client.Raw().Client().Transport, "expected nil transport when GH App PEM is invalid")
 }
 
 func TestGetGHAppConfig_WithDotEnvFile(t *testing.T) {

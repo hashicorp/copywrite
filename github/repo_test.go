@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2023, 2025
+// Copyright IBM Corp. 2023, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package github
@@ -8,8 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-
-	// "os/exec"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -38,7 +37,7 @@ func TestGetRepoCreationYear(t *testing.T) {
 					CreatedAt: &gogithub.Timestamp{Time: time.Date(2021, 6, 15, 0, 0, 0, 0, time.UTC)},
 				}
 				w.Header().Set("Content-Type", "application/json")
-				require.NoError(t, json.NewEncoder(w).Encode(repoData))
+				assert.NoError(t, json.NewEncoder(w).Encode(repoData))
 			},
 			wantYear: 2021,
 			wantErr:  false,
@@ -53,7 +52,7 @@ func TestGetRepoCreationYear(t *testing.T) {
 					CreatedAt: &gogithub.Timestamp{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
 				}
 				w.Header().Set("Content-Type", "application/json")
-				require.NoError(t, json.NewEncoder(w).Encode(repoData))
+				assert.NoError(t, json.NewEncoder(w).Encode(repoData))
 			},
 			wantYear: 2023,
 			wantErr:  false,
@@ -134,4 +133,26 @@ func TestDiscoverRepo_NotInGitRepo(t *testing.T) {
 	_, err := DiscoverRepo()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unable to determine if the current directory relates to a GitHub repo:")
+}
+
+func TestDiscoverRepo_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Initialize a git repo with a GitHub remote so DiscoverRepo can parse the owner/name
+	for _, args := range [][]string{
+		{"git", "init"},
+		{"git", "remote", "add", "origin", "https://github.com/testowner/testrepo.git"},
+	} {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = tmpDir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "setup command %v failed: %s", args, out)
+	}
+
+	t.Chdir(tmpDir)
+
+	repo, err := DiscoverRepo()
+	require.NoError(t, err)
+	assert.Equal(t, "testowner", repo.Owner)
+	assert.Equal(t, "testrepo", repo.Name)
 }

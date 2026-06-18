@@ -1,4 +1,4 @@
-// Copyright IBM Corp. 2023, 2025
+// Copyright IBM Corp. 2023, 2026
 // SPDX-License-Identifier: MPL-2.0
 
 package dispatch
@@ -38,8 +38,13 @@ func TestWaitRunFinished(t *testing.T) {
 	}
 
 	t.Run("short circuit completed", func(t *testing.T) {
-		client, _, server := setupMockServer(t)
+		client, mux, server := setupMockServer(t)
 		defer server.Close()
+
+		apiCalled := false
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			apiCalled = true
+		})
 
 		run := github.WorkflowRun{
 			ID:     github.Int64(1),
@@ -49,6 +54,7 @@ func TestWaitRunFinished(t *testing.T) {
 
 		err := WaitRunFinished(client, baseOpts, run)
 		assert.NoError(t, err)
+		assert.False(t, apiCalled, "expected no GitHub API calls for an already-completed run")
 	})
 
 	t.Run("polls and completes", func(t *testing.T) {
@@ -138,6 +144,7 @@ func TestWaitRunFinished(t *testing.T) {
 
 		err := WaitRunFinished(client, baseOpts, run)
 		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "500")
 	})
 }
 
@@ -281,6 +288,7 @@ func TestWorker(t *testing.T) {
 		res := <-results
 		assert.False(t, res.Success)
 		assert.Error(t, res.Error)
+		assert.Equal(t, "test-repo", res.Name)
 	})
 
 	t.Run("find fails", func(t *testing.T) {
