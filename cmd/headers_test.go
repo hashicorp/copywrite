@@ -26,29 +26,6 @@ func withTestConfig(t *testing.T, fn func(c *config.Config)) {
 	fn(conf)
 }
 
-// restoreHeadersCmd saves headersCmd's current output/error writers and
-// schedules their restoration via t.Cleanup, preventing tests from leaking
-// writer state into each other.
-func restoreHeadersCmd(t *testing.T) {
-	t.Helper()
-	origOut, origErr := headersCmd.OutOrStdout(), headersCmd.ErrOrStderr()
-	t.Cleanup(func() {
-		headersCmd.SetOut(origOut)
-		headersCmd.SetErr(origErr)
-	})
-}
-
-// restoreRootCmd saves rootCmd's current output/error writers and schedules
-// their restoration via t.Cleanup.
-func restoreRootCmd(t *testing.T) {
-	t.Helper()
-	origOut, origErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
-	t.Cleanup(func() {
-		rootCmd.SetOut(origOut)
-		rootCmd.SetErr(origErr)
-	})
-}
-
 func TestHeadersCmd_Flags(t *testing.T) {
 	tests := []struct {
 		name     string
