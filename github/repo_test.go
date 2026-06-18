@@ -136,6 +136,12 @@ func TestDiscoverRepo_NotInGitRepo(t *testing.T) {
 }
 
 func TestDiscoverRepo_Success(t *testing.T) {
+	// Ensure github.com is in go-gh's known hosts regardless of CI environment.
+	// auth.KnownHosts() only adds github.com when GH_HOST, GH_TOKEN/GITHUB_TOKEN,
+	// or a gh config entry is present; without one of these the host list is empty
+	// and repository.Current() returns an error.
+	t.Setenv("GH_HOST", "github.com")
+
 	tmpDir := t.TempDir()
 
 	// Initialize a git repo with a GitHub remote so DiscoverRepo can parse the owner/name
