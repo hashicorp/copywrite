@@ -5,6 +5,7 @@ package dispatch
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -19,6 +20,13 @@ type Result struct {
 	Success bool
 	Error   error
 }
+
+// ErrTimedOut is returned when polling exceeds the maximum number of attempts.
+var ErrTimedOut = errors.New("timed out polling for workflow job")
+
+// ErrUnrepairableState is returned when a workflow run enters a state that
+// cannot be recovered from.
+var ErrUnrepairableState = errors.New("workflow is in an unrepairable state")
 
 // Options provides a way to define how frequently the GitHub APIs should be
 // polled for results, as well as the maximum number of attempts before stopping
@@ -58,11 +66,11 @@ func WaitRunFinished(client *github.Client, opts Options, run github.WorkflowRun
 		case "in_progress":
 			// Do nothing, keep watching
 		default:
-			return fmt.Errorf("workflow \"%s\" is in unrepairable state: %s", *run.Name, *this.Status)
+			return fmt.Errorf("workflow %q entered state %q: %w", *run.Name, *this.Status, ErrUnrepairableState)
 		}
 	}
 
-	return fmt.Errorf("timed out polling for workflow job")
+	return fmt.Errorf("%w", ErrTimedOut)
 }
 
 // FindRun finds the most recent GitHub Actions run matching a given run name.
@@ -97,7 +105,7 @@ func FindRun(client *github.Client, opts Options, runName string) (github.Workfl
 
 		time.Sleep(time.Duration(opts.SecondsBetweenPolls) * time.Second)
 	}
-	return github.WorkflowRun{}, fmt.Errorf("timed out polling for workflow job")
+	return github.WorkflowRun{}, fmt.Errorf("%w", ErrTimedOut)
 }
 
 // Worker spawns an instance of a goroutine that listens for new job requests

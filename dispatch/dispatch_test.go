@@ -4,6 +4,7 @@
 package dispatch
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -103,8 +104,8 @@ func TestWaitRunFinished(t *testing.T) {
 		})
 
 		err := WaitRunFinished(client, baseOpts, run)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "unrepairable state")
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrUnrepairableState))
 	})
 
 	t.Run("timeout", func(t *testing.T) {
@@ -124,8 +125,8 @@ func TestWaitRunFinished(t *testing.T) {
 		})
 
 		err := WaitRunFinished(client, baseOpts, run)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "timed out")
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrTimedOut))
 	})
 
 	t.Run("api error", func(t *testing.T) {
@@ -143,8 +144,10 @@ func TestWaitRunFinished(t *testing.T) {
 		})
 
 		err := WaitRunFinished(client, baseOpts, run)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "500")
+		require.Error(t, err)
+		var ghErr *github.ErrorResponse
+		require.ErrorAs(t, err, &ghErr)
+		assert.Equal(t, http.StatusInternalServerError, ghErr.Response.StatusCode)
 	})
 }
 
@@ -209,8 +212,8 @@ func TestFindRun(t *testing.T) {
 		})
 
 		_, err := FindRun(client, baseOpts, "my-run-3")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "timed out")
+		require.Error(t, err)
+		assert.True(t, errors.Is(err, ErrTimedOut))
 	})
 
 	t.Run("api error", func(t *testing.T) {
@@ -222,8 +225,10 @@ func TestFindRun(t *testing.T) {
 		})
 
 		_, err := FindRun(client, baseOpts, "my-run-4")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "error attempting to find")
+		require.Error(t, err)
+		var ghErr *github.ErrorResponse
+		require.ErrorAs(t, err, &ghErr)
+		assert.Equal(t, http.StatusInternalServerError, ghErr.Response.StatusCode)
 	})
 }
 
@@ -257,9 +262,10 @@ func TestWorker(t *testing.T) {
 			}
 		})
 
+		testRun := "test-repo"
 		jobs := make(chan string, 1)
 		results := make(chan Result, 1)
-		jobs <- "test-repo"
+		jobs <- testRun
 		close(jobs)
 
 		Worker(client, baseOpts, 1, jobs, results)
@@ -267,7 +273,7 @@ func TestWorker(t *testing.T) {
 		res := <-results
 		assert.True(t, res.Success)
 		assert.NoError(t, res.Error)
-		assert.Equal(t, "test-repo", res.Name)
+		assert.Equal(t, testRun, res.Name)
 	})
 
 	t.Run("dispatch fails", func(t *testing.T) {
@@ -280,7 +286,8 @@ func TestWorker(t *testing.T) {
 
 		jobs := make(chan string, 1)
 		results := make(chan Result, 1)
-		jobs <- "test-repo"
+		testRun := "test-repo"
+		jobs <- testRun
 		close(jobs)
 
 		Worker(client, baseOpts, 1, jobs, results)
@@ -288,7 +295,7 @@ func TestWorker(t *testing.T) {
 		res := <-results
 		assert.False(t, res.Success)
 		assert.Error(t, res.Error)
-		assert.Equal(t, "test-repo", res.Name)
+		assert.Equal(t, testRun, res.Name)
 	})
 
 	t.Run("find fails", func(t *testing.T) {
@@ -311,9 +318,11 @@ func TestWorker(t *testing.T) {
 		Worker(client, baseOpts, 1, jobs, results)
 
 		res := <-results
-		assert.False(t, res.Success)
-		assert.Error(t, res.Error)
-		assert.Contains(t, res.Error.Error(), "error attempting to find")
+		require.False(t, res.Success)
+		require.Error(t, res.Error)
+		var ghErr *github.ErrorResponse
+		require.ErrorAs(t, res.Error, &ghErr)
+		assert.Equal(t, http.StatusInternalServerError, ghErr.Response.StatusCode)
 	})
 
 	t.Run("wait fails with unrepairable state", func(t *testing.T) {
@@ -339,15 +348,16 @@ func TestWorker(t *testing.T) {
 
 		jobs := make(chan string, 1)
 		results := make(chan Result, 1)
-		jobs <- "test-repo"
+		testRun := "test-repo"
+		jobs <- testRun
 		close(jobs)
 
 		Worker(client, baseOpts, 1, jobs, results)
 
 		res := <-results
-		assert.False(t, res.Success)
-		assert.Error(t, res.Error)
-		assert.Contains(t, res.Error.Error(), "unrepairable state")
-		assert.Equal(t, "test-repo", res.Name)
+		require.False(t, res.Success)
+		require.Error(t, res.Error)
+		assert.True(t, errors.Is(res.Error, ErrUnrepairableState))
+		assert.Equal(t, testRun, res.Name)
 	})
 }
