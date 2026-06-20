@@ -92,15 +92,7 @@ config, see the "copywrite init" command.`,
 		}
 		cmd.Println("")
 
-		// Append default ignored search patterns (e.g., GitHub Actions workflows)
-		autoSkippedPatterns := []string{
-			".github/workflows/**",
-			".github/dependabot.yml",
-			"**/node_modules/**",
-			".copywrite.hcl",
-			".git/**/*.pack",
-		}
-		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
+		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, addlicense.AutoSkippedPatterns)
 
 		// STEP 1: Update existing copyright headers
 		gha.StartGroup("Updating existing copyright headers:")
