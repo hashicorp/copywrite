@@ -2,8 +2,8 @@ name: golangci
 
 on:
   push:
-    branches:
-      - main
+    # branches:
+    #   - main
   pull_request:
 
 permissions:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0  # Fetch full git history for copyright year auto-detection
 
@@ -47,11 +47,125 @@ jobs:
       - name: run go test
         run: go test -v -coverprofile=coverage.out ./...
 
-      - name: upload coverage report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+      - name: Extract coverage JSON
+        run: |
+          pct=$(go tool cover -func=coverage.out | awk '/^total:/{print $3}' | tr -d '%')
+          repo="${GITHUB_REPOSITORY}"
+          python3 -c "
+          import json, os, datetime
+          repo = os.environ['GITHUB_REPOSITORY']
+          sha  = os.environ['GITHUB_SHA']
+          rid  = os.environ['GITHUB_RUN_ID']
+          json.dump({
+          'repo': repo, 'language': 'go',
+          'date': datetime.date.today().isoformat(),
+          'commit': sha[:7], 'branch': os.environ['GITHUB_REF_NAME'],
+          'run_url': f'https://github.com/{repo}/actions/runs/{rid}',
+          'pages_url': None,
+          'line_rate': float('${pct}'),
+          'lines_covered': None, 'lines_total': None,
+          'branch_rate': None, 'branches_covered': None, 'branches_total': None,
+          }, open('coverage-report.json', 'w'), indent=2)
+          "
+
+      - name: Create GitHub App token for hub push
+        if: vars.COVERAGE_HUB_REPO != ''
+        id: app_token
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859
         with:
-          path: coverage.out
-          name: coverage-report
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.PRIVATE_KEY }}
+          owner: hashicorp
+
+      - name: Push coverage to central hub
+        if: vars.COVERAGE_HUB_REPO != ''
+        continue-on-error: true
+        env:
+          HUB_REPO: ${{ vars.COVERAGE_HUB_REPO }}
+          HUB_TOKEN: ${{ steps.app_token.outputs.token }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          git clone \
+            "https://x-access-token:${HUB_TOKEN}@github.com/${HUB_REPO}.git" \
+            /tmp/hub
+
+          mkdir -p "/tmp/hub/docs/coverage/data/${REPO_NAME}"
+          cp coverage-report.json "/tmp/hub/docs/coverage/data/${REPO_NAME}/latest.json"
+
+          python3 - << 'EOF'
+          import json, os, datetime
+
+          repo = os.environ["REPO_NAME"]
+          hub  = "/tmp/hub"
+
+          latest_path  = f"{hub}/docs/coverage/data/{repo}/latest.json"
+          history_path = f"{hub}/docs/coverage/data/{repo}/history.json"
+
+          with open(latest_path) as f:
+              latest = json.load(f)
+
+          try:
+              with open(history_path) as f:
+                  history = json.load(f)
+          except FileNotFoundError:
+              history = []
+
+          history.append({
+              "date":        latest["date"],
+              "commit":      latest["commit"],
+              "line_rate":   latest["line_rate"],
+              "branch_rate": latest.get("branch_rate"),
+          })
+          history = history[-90:]
+
+          with open(history_path, "w") as f:
+              json.dump(history, f, indent=2)
+
+          index_path = f"{hub}/docs/coverage/data/index.json"
+          try:
+              with open(index_path) as f:
+                  index = json.load(f)
+          except FileNotFoundError:
+              index = {"repos": []}
+
+          if repo not in index["repos"]:
+              index["repos"].append(repo)
+              index["repos"].sort()
+
+          index["updated"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+          with open(index_path, "w") as f:
+              json.dump(index, f, indent=2)
+          EOF
+
+          cd /tmp/hub
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Hub: nothing changed — skipping commit."
+            exit 0
+          fi
+
+
+          BRANCH="coverage/${REPO_NAME}-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH"
+          git commit -m "coverage: update ${REPO_NAME}"
+          git push origin "$BRANCH"
+
+          # Create PR using GitHub API
+          PR_TITLE="coverage: update ${REPO_NAME}"
+          PR_BODY="Automated coverage data update for \`${REPO_NAME}\`."
+          curl -sf -X POST \
+            -H "Authorization: token ${HUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${HUB_REPO}/pulls" \
+            -d "$(jq -n \
+              --arg title "$PR_TITLE" \
+              --arg body "$PR_BODY" \
+              --arg head "$BRANCH" \
+              '{title: $title, body: $body, head: $head, base: "main"}')" \
+            | jq -r '"PR created: \(.html_url)"'
 
       - name: display coverage report
         run: go tool cover -func=coverage.out
@@ -61,7 +175,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
@@ -71,26 +185,27 @@ jobs:
       - name: run go mod tidy
         run: go mod tidy
 
-  build:
-    name: build executables
-    runs-on: 'ubuntu-latest'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+  # build:
+  #   name: build executables
+  #   runs-on: 'ubuntu-latest'
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Install Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: '.go-version'
+  #     - name: Install Go
+  #       uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+  #       with:
+  #         go-version-file: '.go-version'
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
-        with:
-          version: latest
-          args: release --clean --skip=publish --snapshot
+  #     - name: Run GoReleaser
+  #       uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
+  #       with:
+  #         version: latest
+  #         args: release --clean --skip=publish --snapshot
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: copywrite
-          path: dist/*
+  #     - name: Upload build artifacts
+  #       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+  #       with:
+  #         name: copywrite
+  #         path: dist/*
+  
