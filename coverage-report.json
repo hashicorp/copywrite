@@ -1,11 +1,11 @@
 {
-  "repo": "copywrite",
+  "repo": "hashicorp/copywrite",
   "language": "go",
-  "date": "2026-06-24",
-  "commit": "",
-  "branch": "main",
-  "run_url": "",
-  "line_rate": 88.77,
-  "lines_covered": 332,
-  "lines_total": 374
+  "date": "2026-07-01",
+  "commit": "2b6d046",
+  "branch": "feature/add_coverage_file",
+  "run_url": "https://github.com/hashicorp/copywrite/actions/runs/28509524302",
+  "line_rate": 81.8,
+  "lines_covered": 0,
+  "lines_total": 0
 }
