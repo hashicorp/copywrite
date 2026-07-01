@@ -62,6 +62,7 @@ jobs:
     needs: golang-test
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -77,53 +78,17 @@ jobs:
           name: coverage-report
 
       - name: Generate coverage-report.json
-        run: |
-          PCT=$(go tool cover -func=coverage.out | awk '/^total:/{print $3}' | tr -d '%')
-          python3 - <<EOF
-          import json, os, datetime
+        run: python3 .github/scripts/generate_coverage_report.py
 
-          repo = os.environ["GITHUB_REPOSITORY"]
-
-          covered = 0
-          total = 0
-          with open("coverage.out", "r", encoding="utf-8") as f:
-              next(f)
-              for line in f:
-                  line = line.strip()
-                  if not line:
-                      continue
-                  try:
-                      _rng, num_stmts, count = line.rsplit(" ", 2)
-                      num_stmts = int(num_stmts)
-                      count = int(count)
-                  except ValueError:
-                      continue
-                  total += num_stmts
-                  if count > 0:
-                      covered += num_stmts
-
-          report = {
-              "repo":          repo,
-              "language":      "go",
-              "date":          datetime.date.today().isoformat(),
-              "commit":        os.environ.get("GITHUB_SHA", "")[:7],
-              "branch":        os.environ.get("GITHUB_REF_NAME", "main"),
-              "run_url":       f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
-              "line_rate":     float("${PCT}"),
-              "lines_covered": covered,
-              "lines_total":   total,
-          }
-          with open("coverage-report.json", "w", encoding="utf-8") as f:
-            json.dump(report, f, indent=2)
-          EOF
-
-      - name: Commit coverage-report.json
+      - name: Create Pull Request
         if: github.event_name == 'push'
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add coverage-report.json
-          git diff --cached --quiet || (git commit -m "chore: update coverage report" && git push origin HEAD:${{ github.ref_name }})
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: update coverage report"
+          branch: chore/update-coverage-report
+          title: "chore: update coverage report"
+          body: "Automated PR to update `coverage-report.json` after test run on `main`."
+          delete-branch: true
 
   go-mod-tidy:
     name: tidy
