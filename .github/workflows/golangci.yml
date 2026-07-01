@@ -71,11 +71,12 @@ jobs:
           EOF
 
       - name: Commit coverage-report.json
+        if: github.event_name == 'push'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add coverage-report.json
-          git diff --cached --quiet || (git commit -m "chore: update coverage report" && git push)
+          git diff --cached --quiet || (git commit -m "chore: update coverage report" && git push origin HEAD:${{ github.head_ref || github.ref_name }})
 
       - name: upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
