@@ -2,8 +2,8 @@ name: golangci
 
 on:
   push:
-    branches:
-      - main
+    # branches:
+    #   - main
   pull_request:
 
 permissions:
@@ -54,7 +54,28 @@ jobs:
           PCT=$(go tool cover -func=coverage.out | awk '/^total:/{print $3}' | tr -d '%')
           python3 - <<EOF
           import json, os, datetime
+
           repo = os.environ["GITHUB_REPOSITORY"]
+          
+          covered = 0
+           total = 0
+           with open("coverage.out", "r", encoding="utf-8") as f:
+               next(f)  # mode: set
+               for line in f:
+                   line = line.strip()
+                   if not line:
+                       continue
+                   # format: file:startLine.startCol,endLine.endCol numStmts count
+                   try:
+                       _rng, num_stmts, count = line.rsplit(" ", 2)
+                       num_stmts = int(num_stmts)
+                       count = int(count)
+                   except ValueError:
+                       continue
+                   total += num_stmts
+                   if count > 0:
+                       covered += num_stmts
+
           report = {
               "repo":          repo,
               "language":      "go",
@@ -63,10 +84,10 @@ jobs:
               "branch":        os.environ.get("GITHUB_REF_NAME", "main"),
               "run_url":       f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
               "line_rate":     float("${PCT}"),
-              "lines_covered": 0,
-              "lines_total":   0,
+              "lines_covered": covered,
+              "lines_total":   total,
           }
-          with open("coverage-report.json", "w") as f:
+          with open("coverage-report.json", "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
           EOF
 
