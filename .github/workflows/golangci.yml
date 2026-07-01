@@ -58,23 +58,22 @@ jobs:
           repo = os.environ["GITHUB_REPOSITORY"]
           
           covered = 0
-           total = 0
-           with open("coverage.out", "r", encoding="utf-8") as f:
-               next(f)  # mode: set
-               for line in f:
-                   line = line.strip()
-                   if not line:
-                       continue
-                   # format: file:startLine.startCol,endLine.endCol numStmts count
-                   try:
-                       _rng, num_stmts, count = line.rsplit(" ", 2)
-                       num_stmts = int(num_stmts)
-                       count = int(count)
-                   except ValueError:
-                       continue
-                   total += num_stmts
-                   if count > 0:
-                       covered += num_stmts
+          total = 0
+          with open("coverage.out", "r", encoding="utf-8") as f:
+              next(f)
+              for line in f:
+                  line = line.strip()
+                  if not line:
+                      continue
+                  try:
+                      _rng, num_stmts, count = line.rsplit(" ", 2)
+                      num_stmts = int(num_stmts)
+                      count = int(count)
+                  except ValueError:
+                      continue
+                  total += num_stmts
+                  if count > 0:
+                      covered += num_stmts
 
           report = {
               "repo":          repo,
