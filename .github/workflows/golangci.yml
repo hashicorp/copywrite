@@ -88,6 +88,7 @@ jobs:
           branch: chore/update-coverage-report
           title: "chore: update coverage report"
           body: "Automated PR to update `coverage-report.json` after test run on `main`."
+          add-paths: coverage-report.json
           delete-branch: true
 
   go-mod-tidy:
