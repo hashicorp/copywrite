@@ -2,8 +2,8 @@ name: golangci
 
 on:
   push:
-    branches:
-      - main
+    # branches:
+    #   - main
   pull_request:
 
 permissions:
@@ -46,6 +46,34 @@ jobs:
 
       - name: run go test
         run: go test -v -coverprofile=coverage.out ./...
+
+      - name: Generate coverage-report.json
+        run: |
+          PCT=$(go tool cover -func=coverage.out | awk '/^total:/{print $3}' | tr -d '%')
+          python3 - <<EOF
+          import json, os, datetime
+          repo = os.environ["GITHUB_REPOSITORY"]
+          report = {
+              "repo":          repo,
+              "language":      "go",
+              "date":          datetime.date.today().isoformat(),
+              "commit":        os.environ.get("GITHUB_SHA", "")[:7],
+              "branch":        os.environ.get("GITHUB_REF_NAME", "main"),
+              "run_url":       f"https://github.com/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              "line_rate":     float("${PCT}"),
+              "lines_covered": 0,
+              "lines_total":   0,
+          }
+          with open("coverage-report.json", "w") as f:
+            json.dump(report, f, indent=2)
+          EOF
+
+      - name: Commit coverage-report.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add coverage-report.json
+          git diff --cached --quiet || (git commit -m "chore: update coverage report" && git push)
 
       - name: upload coverage report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

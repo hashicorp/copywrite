@@ -1,0 +1,11 @@
+{
+  "repo": "copywrite",
+  "language": "go",
+  "date": "2026-06-24",
+  "commit": "",
+  "branch": "main",
+  "run_url": "",
+  "line_rate": 88.77,
+  "lines_covered": 332,
+  "lines_total": 374
+}
