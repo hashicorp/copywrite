@@ -10,6 +10,3 @@ copywrite
 
 # Ignore local configs
 .env
-
-# Go test coverage profiles
-coverage.out
