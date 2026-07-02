@@ -233,7 +233,7 @@ snippet to your repo's `.pre-commit-config.yaml`:
   - repo: https://github.com/hashicorp/copywrite
     rev: v0.15.0 # Use any release tag
     hooks:
-      - id: copywrite-headers
+      - id: add-headers
 ```
 
 ## Debugging
@@ -258,7 +258,7 @@ The `COPYWRITE_LOG_LEVEL` setting takes precedence, however.
 It is often useful to introspect information about the state Copywrite finds
 itself in. The `copywrite debug` command can print the running configuration,
 whether or not a config file was loaded, what GitHub auth type is in use, and
-more. No sensitive information is printed, however.  
+more. No sensitive information is printed, however.
 
 ## Development
 
