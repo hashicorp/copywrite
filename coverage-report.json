@@ -2,9 +2,9 @@
   "repo": "hashicorp/copywrite",
   "language": "go",
   "date": "2026-07-02",
-  "commit": "3865a1d",
+  "commit": "d190619",
   "branch": "main",
-  "run_url": "https://github.com/hashicorp/copywrite/actions/runs/28565666938",
+  "run_url": "https://github.com/hashicorp/copywrite/actions/runs/28566145568",
   "line_rate": 81.8,
   "lines_covered": 1017,
   "lines_total": 1243
