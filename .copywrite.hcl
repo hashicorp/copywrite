@@ -10,6 +10,8 @@ project {
   header_ignore = [
     "**/testdata/**",
     "licensecheck/copyright_test.go",
+    "licensecheck/update_test.go",
+    ".github/copilot-instructions.md",
 
     # Forked and modified project
     "addlicense/**",
