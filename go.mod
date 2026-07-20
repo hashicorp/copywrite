@@ -7,7 +7,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.19.0
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/jedib0t/go-pretty/v6 v6.8.2
+	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/knadh/koanf/parsers/dotenv v1.1.1
 	github.com/knadh/koanf/parsers/hcl v1.0.0
 	github.com/knadh/koanf/parsers/yaml v1.1.0
