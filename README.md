@@ -9,6 +9,7 @@ Features:
 - Add and/or manage LICENSE files with git-aware copyright year detection
 - Report on licenses used across multiple repositories
 - Automate compliance checks in CI/CD pipelines
+- More features in progress 🎉
 
 ## Getting Started
 
