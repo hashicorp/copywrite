@@ -54,8 +54,8 @@ github.com/knadh/koanf/maps v0.1.2 h1:RBfmAW5CnZT+PJ1CVc1QSJKf4Xu9kxfQgYVQSu8hpb
 github.com/knadh/koanf/maps v0.1.2/go.mod h1:npD/QZY3V6ghQDdcQzl1W4ICNVTkohC8E73eI2xW4yI=
 github.com/knadh/koanf/parsers/dotenv v1.1.2 h1:9VdbqK75gfTm/LCWqOmPbFtIhJ0c11o/MICLmleRlHc=
 github.com/knadh/koanf/parsers/dotenv v1.1.2/go.mod h1:P3BQjxaIc2+SZ3n9BUceqYl95pz3qaGqYTZX0j0d/DI=
-github.com/knadh/koanf/parsers/hcl v1.0.0 h1:abJ3xIM2SNCPVpuBcPOuHYBuIVWpmh/as1hW7u9qF/k=
-github.com/knadh/koanf/parsers/hcl v1.0.0/go.mod h1:6V1NBUhDVQf9aPl20bDJjsdaFAo4ND/qHG78tmBqUFU=
+github.com/knadh/koanf/parsers/hcl v1.0.1 h1:CRx36pivz+XC6wRL3UYAcQPvUeqOKWzwKe2aBo2WHXw=
+github.com/knadh/koanf/parsers/hcl v1.0.1/go.mod h1:6V1NBUhDVQf9aPl20bDJjsdaFAo4ND/qHG78tmBqUFU=
 github.com/knadh/koanf/parsers/yaml v1.1.0 h1:3ltfm9ljprAHt4jxgeYLlFPmUaunuCgu1yILuTXRdM4=
 github.com/knadh/koanf/parsers/yaml v1.1.0/go.mod h1:HHmcHXUrp9cOPcuC+2wrr44GTUB0EC+PyfN3HZD9tFg=
 github.com/knadh/koanf/providers/confmap v1.0.1 h1:L15hbvMqlvhwUuCtL9BkL+rqiMAjk6cZc8O9XoDtE3A=
