@@ -4,7 +4,7 @@ go 1.26.6
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
-	github.com/bmatcuk/doublestar/v4 v4.10.0
+	github.com/bmatcuk/doublestar/v4 v4.10.2
 	github.com/bradleyfalzon/ghinstallation/v2 v2.19.0
 	github.com/hashicorp/go-hclog v1.6.3
 	github.com/jedib0t/go-pretty/v6 v6.8.3
