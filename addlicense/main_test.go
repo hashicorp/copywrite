@@ -976,11 +976,11 @@ func TestDirectorySkippingRegressionTest(t *testing.T) {
 // does not cause Run to return an error and that real files are still processed.
 func TestBrokenSymlinkSkipped(t *testing.T) {
 	tmp := tempDir(t)
-		t.Cleanup(func() {
-			if err := os.RemoveAll(tmp); err != nil {
-				t.Logf("Failed to remove temp dir: %v", err)
-			}
-		})
+	t.Cleanup(func() {
+		if err := os.RemoveAll(tmp); err != nil {
+			t.Logf("Failed to remove temp dir: %v", err)
+		}
+	})
 
 	// Create a real Go file with no copyright header
 	realFile := filepath.Join(tmp, "real.go")
@@ -1001,7 +1001,7 @@ func TestBrokenSymlinkSkipped(t *testing.T) {
 		SPDXID: "Apache-2.0",
 	}
 
-	_, err := Run([]string{}, "off", licenseData, "", false, false, []string{tmp}, logger)
+	_, err := Run([]string{}, nil, "off", licenseData, "", false, false, []string{tmp}, logger)
 	if err != nil {
 		t.Fatalf("Run returned error on broken symlink: %v", err)
 	}

@@ -248,9 +248,10 @@ func Test_LoadConfigFile(t *testing.T) {
 			expectedOutput: &Config{
 				SchemaVersion: 12,
 				Project: Project{
-					CopyrightYear:   9001,
-					CopyrightHolder: "Dummy Corporation",
-					License:         "NOT_A_VALID_SPDX",
+					CopyrightYear:    9001,
+					CopyrightHolder:  "Dummy Corporation",
+					IgnoreGitIgnored: true,
+					License:          "NOT_A_VALID_SPDX",
 					HeaderIgnore: []string{
 						"asdf.go",
 						"*.css",
@@ -325,6 +326,7 @@ func Test_Sprint(t *testing.T) {
 				"project.copyright_holder -> Dummy Corporation",
 				"project.copyright_year -> 9001",
 				"project.header_ignore -> [asdf.go *.css **/vendor/**.go]",
+				"project.ignore_gitignored -> true",
 				"project.license -> NOT_A_VALID_SPDX",
 				"project.upstream -> hashicorp/super-secret-private-repo",
 				"schema_version -> 12\n",
