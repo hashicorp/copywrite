@@ -4,6 +4,7 @@ project {
   copyright_year   = 9001
   copyright_holder = "Dummy Corporation"
   license          = "NOT_A_VALID_SPDX"
+  ignore_gitignored = true
 
   header_ignore = [
     "asdf.go",
