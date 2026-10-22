@@ -162,6 +162,11 @@ project {
   # Default: false
   # ignore_year1 = false
 
+  # (OPTIONAL) Skip files ignored by Git.
+  # The headers command fails if Git ignore information cannot be read.
+  # Default: false
+  # ignore_gitignored = false
+
   # (OPTIONAL) A list of globs that should not have copyright or license headers .
   # Supports doublestar glob patterns for more flexibility in defining which
   # files or folders should be ignored
