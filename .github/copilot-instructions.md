@@ -13,8 +13,11 @@ run compliance checks in CI (via the `--plan` dry-run flag, which exits non-zero
 when changes are needed).
 
 - **Type:** CLI application built with [Cobra](https://github.com/spf13/cobra).
-- **Language/runtime:** Go (**module declares `go 1.25.0`; `.go-version` pins
-  `1.25.0`**). ~99% Go. Always use a Go toolchain that satisfies `go.mod`.
+- **Language/runtime:** Go (**module declares `go 1.26.7`; `.go-version` pins
+  `1.26.7`**). ~99% Go. Always use a Go toolchain that satisfies `go.mod`.
+  Keep `.go-version` in sync with the `go` directive in `go.mod`; CI installs
+  Go from `.go-version`, so dependency bumps that raise the `go` directive
+  (e.g. Dependabot PRs) fail every job until `.go-version` is bumped too.
 - **Config & parsing:** uses `koanf` with HCL/YAML/dotenv/env providers. Project
   config lives in a per-repo `.copywrite.hcl` file (see `.copywrite.hcl` and the
   README "Config Structure" section).
