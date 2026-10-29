@@ -77,7 +77,7 @@ func Test_updateExistingHeaders_EmptyDirectory(t *testing.T) {
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
-	count, anyUpdated, licensePath := updateExistingHeaders(headersCmd, []string{}, true)
+	count, anyUpdated, licensePath := updateExistingHeaders(headersCmd, []string{}, nil, true)
 	assert.Equal(t, 0, count)
 	assert.False(t, anyUpdated)
 	assert.Empty(t, licensePath)
@@ -102,7 +102,7 @@ func Test_updateExistingHeaders_WithLicenseFile(t *testing.T) {
 	buf := new(bytes.Buffer)
 	headersCmd.SetOut(buf)
 
-	_, _, licensePath := updateExistingHeaders(headersCmd, []string{}, true)
+	_, _, licensePath := updateExistingHeaders(headersCmd, []string{}, nil, true)
 	assert.Equal(t, "LICENSE", licensePath)
 }
 
@@ -132,9 +132,145 @@ func Test_updateExistingHeaders_SkipsIgnoredPatterns(t *testing.T) {
 	headersCmd.SetOut(buf)
 
 	ignoredPatterns := []string{"vendor/**"}
-	count, _, _ := updateExistingHeaders(headersCmd, ignoredPatterns, true)
+	count, _, _ := updateExistingHeaders(headersCmd, ignoredPatterns, nil, true)
 	// Only main.go should be counted; the vendor file must be excluded
 	assert.Equal(t, 1, count)
+}
+
+func TestNewGitIgnoredFiles_UsesRepositoryInfoAndGlobalRules(t *testing.T) {
+	tmpDir := newGitRepo(t, time.Now())
+	globalIgnore := filepath.Join(tmpDir, "global-ignore")
+	globalConfig := filepath.Join(tmpDir, "gitconfig")
+	require.NoError(t, os.WriteFile(globalIgnore, []byte("global.go\n"), 0644))
+	require.NoError(t, os.WriteFile(globalConfig, []byte("[core]\n\texcludesFile = "+globalIgnore+"\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte("local.go\nignored-dir/*\n!ignored-dir/nested.go\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".git", "info", "exclude"), []byte("info.go\n"), 0644))
+	require.NoError(t, os.Mkdir(filepath.Join(tmpDir, "ignored-dir"), 0755))
+	for _, name := range []string{"local.go", "global.go", "info.go", filepath.Join("ignored-dir", "nested.go"), filepath.Join("ignored-dir", "other.go")} {
+		path := filepath.Join(tmpDir, name)
+		require.NoError(t, os.WriteFile(path, []byte("package ignored\n"), 0644))
+	}
+
+	t.Setenv("GIT_CONFIG_GLOBAL", globalConfig)
+	t.Chdir(tmpDir)
+	ignored, err := newGitIgnoredFiles(".")
+	require.NoError(t, err)
+
+	for _, path := range []string{"local.go", "global.go", "info.go", filepath.Join("ignored-dir", "other.go")} {
+		assert.True(t, ignored.IsIgnored(path), "expected %s to be ignored", path)
+	}
+	assert.False(t, ignored.IsIgnored(filepath.Join("ignored-dir", "nested.go")), "negated path should not be ignored")
+	assert.False(t, ignored.IsIgnored(".gitignore"))
+}
+
+func TestNewGitIgnoredFiles_SkipsNestedRepositories(t *testing.T) {
+	tmpDir := newGitRepo(t, time.Now())
+	nestedDir := filepath.Join(tmpDir, "nested")
+	require.NoError(t, os.Mkdir(nestedDir, 0755))
+	cmd := exec.Command("git", "init", "-q")
+	cmd.Dir = nestedDir
+	require.NoError(t, cmd.Run())
+	require.NoError(t, os.WriteFile(filepath.Join(nestedDir, "ignored.go"), []byte("package nested\n"), 0644))
+
+	ignored, err := newGitIgnoredFiles(tmpDir)
+	require.NoError(t, err)
+	assert.False(t, ignored.IsNestedRepo(tmpDir))
+	assert.True(t, ignored.IsNestedRepo(filepath.Join(tmpDir, "nested")))
+}
+
+func TestNewGitIgnoredFiles_SkipsSubmoduleStyleRepositories(t *testing.T) {
+	tmpDir := newGitRepo(t, time.Now())
+	nestedDir := filepath.Join(tmpDir, "nested")
+	require.NoError(t, os.Mkdir(nestedDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(nestedDir, ".git"), []byte("gitdir: /tmp/other-repo/.git\n"), 0644))
+
+	ignored, err := newGitIgnoredFiles(tmpDir)
+	require.NoError(t, err)
+	assert.True(t, ignored.IsNestedRepo(nestedDir))
+}
+
+func TestHeadersCmd_Run_WithGitIgnoredFiles(t *testing.T) {
+	tmpDir := newGitRepo(t, time.Now())
+	configContent := `schema_version = 1
+
+project {
+  license           = "MPL-2.0"
+  copyright_year    = 2023
+  copyright_holder  = "Test Corp."
+  ignore_gitignored = true
+}
+`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".copywrite.hcl"), []byte(configContent), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte("ignored.go\n"), 0644))
+
+	ignoredFile := filepath.Join(tmpDir, "ignored.go")
+	ignoredContent := "// Copyright Test Corp. 2019\npackage ignored\n"
+	require.NoError(t, os.WriteFile(ignoredFile, []byte(ignoredContent), 0644))
+	missingIgnoredFile := filepath.Join(tmpDir, "missing-ignored.go")
+	require.NoError(t, os.WriteFile(missingIgnoredFile, []byte("package ignored\n"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".git", "info", "exclude"), []byte("missing-ignored.go\n"), 0644))
+
+	regularFile := filepath.Join(tmpDir, "regular.go")
+	require.NoError(t, os.WriteFile(regularFile, []byte("package regular\n"), 0644))
+	gitAddCommit(t, tmpDir, "add regular source")
+
+	t.Chdir(tmpDir)
+	restoreRootCmd(t)
+	restoreHeadersCmd(t)
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	headersCmd.SetOut(buf)
+	headersCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"headers", "--spdx", "MPL-2.0", "--copyright-holder", "Test Corp."})
+
+	require.NoError(t, rootCmd.Execute())
+
+	actual, err := os.ReadFile(ignoredFile)
+	require.NoError(t, err)
+	assert.Equal(t, ignoredContent, string(actual))
+	actual, err = os.ReadFile(missingIgnoredFile)
+	require.NoError(t, err)
+	assert.Equal(t, "package ignored\n", string(actual))
+	actual, err = os.ReadFile(regularFile)
+	require.NoError(t, err)
+	assert.Contains(t, string(actual), "Copyright Test Corp.")
+}
+
+func TestHeadersCmd_PlanMode_SkipsGitIgnoredFiles(t *testing.T) {
+	tmpDir := newGitRepo(t, time.Now())
+	configContent := `schema_version = 1
+
+project {
+  license           = "MPL-2.0"
+  copyright_year    = 2023
+  copyright_holder  = "Test Corp."
+  ignore_gitignored = true
+}
+`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".copywrite.hcl"), []byte(configContent), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, ".gitignore"), []byte("ignored.go\n"), 0644))
+	ignoredFile := filepath.Join(tmpDir, "ignored.go")
+	require.NoError(t, os.WriteFile(ignoredFile, []byte("package ignored\n"), 0644))
+	regularFile := filepath.Join(tmpDir, "regular.go")
+	regularContent := fmt.Sprintf("// Copyright (c) Test Corp. 2023, %d\n// SPDX-License-Identifier: MPL-2.0\n\npackage regular\n", time.Now().Year())
+	require.NoError(t, os.WriteFile(regularFile, []byte(regularContent), 0644))
+	gitAddCommit(t, tmpDir, "add regular source")
+
+	t.Chdir(tmpDir)
+	restoreRootCmd(t)
+	restoreHeadersCmd(t)
+	buf := new(bytes.Buffer)
+	rootCmd.SetOut(buf)
+	rootCmd.SetErr(buf)
+	headersCmd.SetOut(buf)
+	headersCmd.SetErr(buf)
+	rootCmd.SetArgs([]string{"headers", "--plan", "--spdx", "MPL-2.0", "--copyright-holder", "Test Corp."})
+
+	require.NoError(t, rootCmd.Execute())
+	actual, err := os.ReadFile(ignoredFile)
+	require.NoError(t, err)
+	assert.Equal(t, "package ignored\n", string(actual))
 }
 
 func Test_updateLicenseFile_EmptyPath(t *testing.T) {
