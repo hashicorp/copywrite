@@ -284,11 +284,15 @@ func processFile(f *file, t *template.Template, license LicenseData, checkonly b
 				return false, err
 			}
 			if updated {
-				logger.Printf("%s (copyright holder updated)", f.path)
+				if verbose {
+					logger.Printf("%s (copyright holder updated)", f.path)
+				}
 				return true, nil
 			}
 		} else {
-			logger.Printf("%s (license header added)", f.path)
+			if verbose {
+				logger.Printf("%s (license header added)", f.path)
+			}
 			return true, nil
 		}
 	}
