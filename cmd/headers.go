@@ -22,7 +22,8 @@ import (
 
 // Flag variables
 var (
-	plan bool
+	plan  bool
+	quiet bool
 )
 
 var headersCmd = &cobra.Command{
@@ -70,27 +71,29 @@ config, see the "copywrite init" command.`,
 		}
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		if plan {
-			cmd.Print(text.FgYellow.Sprint("Executing in dry-run mode. Rerun without the `--plan` flag to apply changes.\n\n"))
-		}
-
-		if conf.Project.License == "" {
-			cmd.Printf("The --spdx flag was not specified, omitting SPDX license statements.\n\n")
-		} else {
-			cmd.Printf("Using license identifier: %s\n", conf.Project.License)
-		}
-		cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
-
-		if len(conf.Project.HeaderIgnore) == 0 {
-			cmd.Println("The project.header_ignore list was left empty in config. Processing all files by default.")
-		} else {
-			gha.StartGroup("Exempting the following search patterns:")
-			for _, v := range conf.Project.HeaderIgnore {
-				cmd.Println(text.FgCyan.Sprint(v))
+		if !quiet {
+			if plan {
+				cmd.Print(text.FgYellow.Sprint("Executing in dry-run mode. Rerun without the `--plan` flag to apply changes.\n\n"))
 			}
-			gha.EndGroup()
+
+			if conf.Project.License == "" {
+				cmd.Printf("The --spdx flag was not specified, omitting SPDX license statements.\n\n")
+			} else {
+				cmd.Printf("Using license identifier: %s\n", conf.Project.License)
+			}
+			cmd.Printf("Using copyright holder: %v\n\n", conf.Project.CopyrightHolder)
+
+			if len(conf.Project.HeaderIgnore) == 0 {
+				cmd.Println("The project.header_ignore list was left empty in config. Processing all files by default.")
+			} else {
+				gha.StartGroup("Exempting the following search patterns:")
+				for _, v := range conf.Project.HeaderIgnore {
+					cmd.Println(text.FgCyan.Sprint(v))
+				}
+				gha.EndGroup()
+			}
+			cmd.Println("")
 		}
-		cmd.Println("")
 
 		// Append default ignored search patterns (e.g., GitHub Actions workflows)
 		autoSkippedPatterns := []string{
@@ -103,10 +106,14 @@ config, see the "copywrite init" command.`,
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
 
 		// STEP 1: Update existing copyright headers
-		gha.StartGroup("Updating existing copyright headers:")
+		if !quiet {
+			gha.StartGroup("Updating existing copyright headers:")
+		}
 		updatedCount, anyFileUpdated, licensePath := updateExistingHeaders(cmd, ignoredPatterns, plan)
-		gha.EndGroup()
-		if updatedCount > 0 {
+		if !quiet {
+			gha.EndGroup()
+		}
+		if updatedCount > 0 && !quiet {
 			if plan {
 				cmd.Printf("\n%s\n\n", text.FgYellow.Sprintf("[DRY RUN] Would update %d file(s) with new copyright years", updatedCount))
 			} else {
@@ -121,7 +128,12 @@ config, see the "copywrite init" command.`,
 			SPDXID: conf.Project.License,
 		}
 
-		verbose := true
+		verbose := !quiet
+		if quiet && cliLogger.IsDebug() {
+			previousLevel := cliLogger.GetLevel()
+			cliLogger.SetLevel(hclog.Info)
+			defer cliLogger.SetLevel(previousLevel)
+		}
 
 		// Wrap hclogger to use standard lib's log.Logger
 		stdcliLogger := cliLogger.StandardLogger(&hclog.StandardLoggerOptions{
@@ -137,7 +149,9 @@ config, see the "copywrite init" command.`,
 		// return a non-zero error code.
 
 		// STEP 3: Add missing headers
-		gha.StartGroup("Adding missing copyright headers:")
+		if !quiet {
+			gha.StartGroup("Adding missing copyright headers:")
+		}
 		var err error
 		// In dry-run mode, if updateExistingHeaders found files that would be
 		// updated (year bumps), treat that as an error so the command exits
@@ -151,7 +165,9 @@ config, see the "copywrite init" command.`,
 		} else if err == nil {
 			err = runErr
 		}
-		gha.EndGroup()
+		if !quiet {
+			gha.EndGroup()
+		}
 
 		// STEP 4: Update LICENSE file if any files were actually modified (either updated or added headers)
 		// In plan mode: runErr != nil means headers would be added
@@ -164,6 +180,9 @@ config, see the "copywrite init" command.`,
 
 		// Check for errors after LICENSE file update so we still show what would happen
 		cobra.CheckErr(err)
+		if quiet {
+			cmd.Println(text.FgGreen.Sprint("Headers successfully processed."))
+		}
 	},
 }
 
@@ -173,6 +192,7 @@ func init() {
 	// These flags are only locally relevant
 	headersCmd.Flags().StringVarP(&dirPath, "dirPath", "d", ".", "Path to the directory in which you wish to validate headers")
 	headersCmd.Flags().BoolVar(&plan, "plan", false, "Performs a dry-run, printing the names of all files missing headers")
+	headersCmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppresses output except for a success message")
 
 	// These flags will get mapped to keys in the the global Config
 	headersCmd.Flags().StringP("spdx", "s", "", "SPDX-compliant license identifier (e.g., 'MPL-2.0')")
@@ -235,14 +255,18 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 				if !dryRun {
 					updated, err := licensecheck.UpdateCopyrightHeaderWithCache(path, targetHolder, configYear, false, ignoreYear1, repoFirstYear, repoRoot)
 					if err == nil && updated {
-						cmd.Printf("  %s\n", path)
+						if !quiet {
+							cmd.Printf("  %s\n", path)
+						}
 						atomic.AddInt64(&updatedCount64, 1)
 						atomic.StoreInt32(&anyFileUpdatedFlag, 1)
 					}
 				} else {
 					needsUpdate, err := licensecheck.NeedsUpdateWithCache(path, targetHolder, configYear, false, ignoreYear1, repoFirstYear, repoRoot)
 					if err == nil && needsUpdate {
-						cmd.Printf("  %s\n", path)
+						if !quiet {
+							cmd.Printf("  %s\n", path)
+						}
 						atomic.AddInt64(&updatedCount64, 1)
 						atomic.StoreInt32(&anyFileUpdatedFlag, 1)
 					}
@@ -316,12 +340,12 @@ func updateLicenseFile(cmd *cobra.Command, licensePath string, anyFileUpdated bo
 	// Update LICENSE file, forcing current year if any file was updated
 	if !dryRun {
 		updated, err := licensecheck.UpdateCopyrightHeaderWithCache(licensePath, targetHolder, configYear, anyFileUpdated, ignoreYear1, repoFirstYear, repoRoot)
-		if err == nil && updated {
+		if err == nil && updated && !quiet {
 			cmd.Printf("\nUpdated LICENSE file: %s\n", licensePath)
 		}
 	} else {
 		needsUpdate, err := licensecheck.NeedsUpdateWithCache(licensePath, targetHolder, configYear, anyFileUpdated, ignoreYear1, repoFirstYear, repoRoot)
-		if err == nil && needsUpdate {
+		if err == nil && needsUpdate && !quiet {
 			cmd.Printf("\n[DRY RUN] Would update LICENSE file: %s\n", licensePath)
 		}
 	}
