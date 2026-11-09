@@ -129,6 +129,11 @@ config, see the "copywrite init" command.`,
 		}
 
 		verbose := !quiet
+		if quiet && cliLogger.IsDebug() {
+			previousLevel := cliLogger.GetLevel()
+			cliLogger.SetLevel(hclog.Info)
+			defer cliLogger.SetLevel(previousLevel)
+		}
 
 		// Wrap hclogger to use standard lib's log.Logger
 		stdcliLogger := cliLogger.StandardLogger(&hclog.StandardLoggerOptions{
