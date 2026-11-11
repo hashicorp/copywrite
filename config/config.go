@@ -29,11 +29,12 @@ var (
 // Project represents data needed for copyright and licensing statements inside
 // a specific project/repo
 type Project struct {
-	CopyrightYear   int      `koanf:"copyright_year"`
-	CopyrightHolder string   `koanf:"copyright_holder"`
-	IgnoreYear1     bool     `koanf:"ignore_year1"`
-	HeaderIgnore    []string `koanf:"header_ignore"`
-	License         string   `koanf:"license"`
+	CopyrightYear    int      `koanf:"copyright_year"`
+	CopyrightHolder  string   `koanf:"copyright_holder"`
+	IgnoreYear1      bool     `koanf:"ignore_year1"`
+	IgnoreGitIgnored bool     `koanf:"ignore_gitignored"`
+	HeaderIgnore     []string `koanf:"header_ignore"`
+	License          string   `koanf:"license"`
 
 	// Upstream is optional and only used if a given repo pulls from another
 	Upstream string `koanf:"upstream"`
