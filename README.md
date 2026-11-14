@@ -1,4 +1,4 @@
-# copywrite
+# copywrite was forked
 
 This repo provides utilities for managing copyright headers and license files
 across many repos at scale.
