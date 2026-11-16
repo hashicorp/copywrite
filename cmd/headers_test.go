@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/copywrite/config"
+	"github.com/hashicorp/go-hclog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,6 +35,7 @@ func TestHeadersCmd_Flags(t *testing.T) {
 	}{
 		{name: "dirPath flag", flagName: "dirPath", defValue: "."},
 		{name: "plan flag", flagName: "plan", defValue: "false"},
+		{name: "quiet flag", flagName: "quiet", defValue: "false"},
 		{name: "spdx flag", flagName: "spdx", defValue: ""},
 		{name: "copyright-holder flag", flagName: "copyright-holder", defValue: ""},
 	}
@@ -58,8 +60,53 @@ func TestHeadersCmd_Help(t *testing.T) {
 	output := buf.String()
 	assert.Contains(t, output, "Recursively checks for all files")
 	assert.Contains(t, output, "--plan")
+	assert.Contains(t, output, "--quiet")
 	assert.Contains(t, output, "--spdx")
 	assert.Contains(t, output, "--dirPath")
+}
+
+func TestHeadersCmd_QuietMode(t *testing.T) {
+	tmpDir := newGitRepo(t, time.Now())
+	mainFile := filepath.Join(tmpDir, "main.go")
+	mainContent := "package main\n\nfunc main() {}\n"
+	require.NoError(t, os.WriteFile(mainFile, []byte(mainContent), 0644))
+	gitAddCommit(t, tmpDir, "add source file")
+	t.Chdir(tmpDir)
+
+	withTestConfig(t, func(c *config.Config) {
+		c.Project.License = "MPL-2.0"
+		c.Project.CopyrightHolder = "Test Corp."
+		c.Project.CopyrightYear = 2023
+	})
+
+	oldQuiet, oldPlan := quiet, plan
+	quiet, plan = false, false
+	quietFlag := headersCmd.Flags().Lookup("quiet")
+	oldQuietFlagChanged := quietFlag.Changed
+	require.NoError(t, headersCmd.Flags().Set("quiet", "true"))
+	t.Cleanup(func() {
+		quiet, plan = oldQuiet, oldPlan
+		quietFlag.Changed = oldQuietFlagChanged
+	})
+
+	restoreHeadersCmd(t)
+	output := new(bytes.Buffer)
+	headersCmd.SetOut(output)
+
+	logOutput := new(bytes.Buffer)
+	oldLogger := cliLogger
+	cliLogger = hclog.New(&hclog.LoggerOptions{Name: "test", Level: hclog.Info, Output: logOutput})
+	t.Cleanup(func() { cliLogger = oldLogger })
+
+	headersCmd.Run(headersCmd, nil)
+
+	assert.Contains(t, output.String(), "Headers successfully processed.")
+	assert.NotContains(t, output.String(), "main.go")
+	assert.Empty(t, logOutput.String(), "quiet mode should suppress successful per-file logs")
+
+	updatedContent, err := os.ReadFile(mainFile)
+	require.NoError(t, err)
+	assert.Contains(t, string(updatedContent), "Copyright Test Corp.")
 }
 
 func Test_updateExistingHeaders_EmptyDirectory(t *testing.T) {
@@ -278,6 +325,26 @@ project {
 	require.NoError(t, err)
 	output := buf.String()
 	assert.Contains(t, output, "dry-run mode")
+}
+
+func TestHeadersCmd_QuietMode_ShowsErrors(t *testing.T) {
+	if os.Getenv("TEST_HEADERS_QUIET_ERROR") == "1" {
+		tmpDir := newGitRepo(t, time.Now())
+		t.Chdir(tmpDir)
+		rootCmd.SetArgs([]string{"headers", "--quiet", "--spdx", "invalid-license"})
+		if err := rootCmd.Execute(); err != nil {
+			t.Logf("execute: %v", err)
+		}
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestHeadersCmd_QuietMode_ShowsErrors", "-test.count=1")
+	cmd.Env = append(os.Environ(), "TEST_HEADERS_QUIET_ERROR=1")
+	output, err := cmd.CombinedOutput()
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr, "expected an invalid license to exit non-zero")
+	assert.Contains(t, string(output), "invalid SPDX license identifier")
+	assert.NotContains(t, string(output), "Headers successfully processed.")
 }
 
 func TestHeadersCmd_Run_WithEmptyLicense(t *testing.T) {
