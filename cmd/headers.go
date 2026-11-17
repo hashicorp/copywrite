@@ -90,6 +90,10 @@ config, see the "copywrite init" command.`,
 			}
 			gha.EndGroup()
 		}
+		if conf.Project.IgnoreGitIgnored {
+			cmd.Println("")
+			cmd.Println(text.FgCyan.Sprint("Exempting Git-ignored files."))
+		}
 		cmd.Println("")
 
 		// Append default ignored search patterns (e.g., GitHub Actions workflows)
@@ -101,10 +105,16 @@ config, see the "copywrite init" command.`,
 			".git/**/*.pack",
 		}
 		ignoredPatterns := lo.Union(conf.Project.HeaderIgnore, autoSkippedPatterns)
+		var gitIgnored *gitIgnoredFiles
+		if conf.Project.IgnoreGitIgnored {
+			var err error
+			gitIgnored, err = newGitIgnoredFiles(".")
+			cobra.CheckErr(err)
+		}
 
 		// STEP 1: Update existing copyright headers
 		gha.StartGroup("Updating existing copyright headers:")
-		updatedCount, anyFileUpdated, licensePath := updateExistingHeaders(cmd, ignoredPatterns, plan)
+		updatedCount, anyFileUpdated, licensePath := updateExistingHeaders(cmd, ignoredPatterns, gitIgnored, plan)
 		gha.EndGroup()
 		if updatedCount > 0 {
 			if plan {
@@ -145,7 +155,9 @@ config, see the "copywrite init" command.`,
 		if plan && updatedCount > 0 {
 			err = fmt.Errorf("[DRY RUN] %d file(s) would be updated with new copyright years", updatedCount)
 		}
-		filesAdded, runErr := addlicense.Run(ignoredPatterns, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
+		filesAdded, runErr := addlicense.Run(ignoredPatterns, func(path string) bool {
+			return gitIgnored.IsIgnored(path) || gitIgnored.IsNestedRepo(path)
+		}, "only", licenseData, "", verbose, plan, []string{"."}, stdcliLogger)
 		if err != nil && runErr != nil {
 			err = fmt.Errorf("%v; %v", err, runErr)
 		} else if err == nil {
@@ -181,7 +193,7 @@ func init() {
 
 // updateExistingHeaders walks through files and updates copyright headers based on config and git history
 // Returns the count of updated files, a boolean indicating if any file was updated, and the LICENSE file path (if found)
-func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun bool) (int, bool, string) {
+func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, gitIgnored *gitIgnoredFiles, dryRun bool) (int, bool, string) {
 	_ = licensecheck.InitializeGitCache(".")
 	targetHolder := conf.Project.CopyrightHolder
 	if targetHolder == "" {
@@ -254,18 +266,21 @@ func updateExistingHeaders(cmd *cobra.Command, ignoredPatterns []string, dryRun 
 	// Producer: walk the tree and push files onto the channel
 	go func() {
 		_ = filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
-			// Check if file should be ignored
-			if addlicense.FileMatches(path, ignoredPatterns) {
-				return nil
-			}
-
 			if err != nil {
 				return nil
 			}
 			if d.IsDir() {
+				if gitIgnored.IsNestedRepo(path) {
+					return filepath.SkipDir
+				}
 				if path != "." && addlicense.FileMatches(path, ignoredPatterns) {
 					return filepath.SkipDir
 				}
+				return nil
+			}
+
+			// Check if file should be ignored.
+			if addlicense.FileMatches(path, ignoredPatterns) || gitIgnored.IsIgnored(path) {
 				return nil
 			}
 

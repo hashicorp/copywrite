@@ -134,10 +134,12 @@ func restoreInitCmd(t *testing.T) {
 func restoreRootCmd(t *testing.T) {
 	t.Helper()
 	origOut, origErr := rootCmd.OutOrStdout(), rootCmd.ErrOrStderr()
+	origPlan, origDirPath := plan, dirPath
 	t.Cleanup(func() {
 		rootCmd.SetOut(origOut)
 		rootCmd.SetErr(origErr)
 		rootCmd.SetArgs(nil)
+		plan, dirPath = origPlan, origDirPath
 		conf = config.MustNew()
 	})
 }

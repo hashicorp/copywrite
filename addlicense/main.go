@@ -141,6 +141,7 @@ func main() {
 	// real main
 	_, err := Run(
 		ignorePatterns,
+		nil,
 		spdx,
 		data,
 		*licensef,
@@ -181,6 +182,7 @@ func validatePatterns(patterns []string) error {
 // Run executes addLicense with supplied variables
 func Run(
 	ignorePatternList []string,
+	pathIgnored func(string) bool,
 	spdx spdxFlag,
 	license LicenseData,
 	licenseFileOverride string, // Provide a file to use as the license header
@@ -227,7 +229,7 @@ func Run(
 	}()
 
 	for _, d := range patterns {
-		if err := walk(ch, d, logger); err != nil {
+		if err := walk(ch, d, pathIgnored, logger); err != nil {
 			return false, err
 		}
 	}
@@ -300,14 +302,14 @@ type file struct {
 	mode os.FileMode
 }
 
-func walk(ch chan<- *file, start string, logger *log.Logger) error {
+func walk(ch chan<- *file, start string, pathIgnored func(string) bool, logger *log.Logger) error {
 	return filepath.Walk(start, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			logger.Printf("%s error: %v", path, err)
 			return nil
 		}
 		if fi.IsDir() {
-			if path != start && FileMatches(path, ignorePatterns) {
+			if path != start && (FileMatches(path, ignorePatterns) || isPathIgnored(path, pathIgnored)) {
 				logger.Printf("[DEBUG] skipping directory: %s", path)
 				return filepath.SkipDir
 			}
@@ -320,7 +322,7 @@ func walk(ch chan<- *file, start string, logger *log.Logger) error {
 			logger.Printf("[DEBUG] skipping symlink: %s", path)
 			return nil
 		}
-		if FileMatches(path, ignorePatterns) {
+		if FileMatches(path, ignorePatterns) || isPathIgnored(path, pathIgnored) {
 			// The [DEBUG] level is inferred by go-hclog as a debug statement
 			logger.Printf("[DEBUG] skipping: %s", path)
 			return nil
@@ -328,6 +330,10 @@ func walk(ch chan<- *file, start string, logger *log.Logger) error {
 		ch <- &file{path, fi.Mode()}
 		return nil
 	})
+}
+
+func isPathIgnored(path string, pathIgnored func(string) bool) bool {
+	return pathIgnored != nil && pathIgnored(path)
 }
 
 // FileMatches determines if path matches one of the provided file patterns.
